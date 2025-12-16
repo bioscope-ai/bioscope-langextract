@@ -21,16 +21,17 @@ with lazy loading for other submodules accessed via attribute access.
 from __future__ import annotations
 
 import importlib
+from importlib.metadata import version
 import sys
 from typing import Any, Dict
 
-from langextract import visualization
 from langextract.extraction import extract as extract_func
+
+__version__ = version("bioscope-langextract")
 
 __all__ = [
     # Public convenience functions (thin wrappers)
     "extract",
-    "visualize",
     # Submodules exposed lazily on attribute access for ergonomics:
     "annotation",
     "data",
@@ -40,8 +41,6 @@ __all__ = [
     "factory",
     "resolver",
     "prompting",
-    "io",
-    "visualization",
     "exceptions",
     "core",
     "plugins",
@@ -55,11 +54,6 @@ def extract(*args: Any, **kwargs: Any):
   return extract_func(*args, **kwargs)
 
 
-def visualize(*args: Any, **kwargs: Any):
-  """Top-level API: lx.visualize(...)."""
-  return visualization.visualize(*args, **kwargs)
-
-
 # PEP 562 lazy loading
 _LAZY_MODULES = {
     "annotation": "langextract.annotation",
@@ -70,14 +64,11 @@ _LAZY_MODULES = {
     "exceptions": "langextract.exceptions",
     "factory": "langextract.factory",
     "inference": "langextract.inference",
-    "io": "langextract.io",
-    "progress": "langextract.progress",
     "prompting": "langextract.prompting",
     "providers": "langextract.providers",
     "resolver": "langextract.resolver",
     "schema": "langextract.schema",
     "tokenizer": "langextract.tokenizer",
-    "visualization": "langextract.visualization",
     "core": "langextract.core",
     "plugins": "langextract.plugins",
     "registry": "langextract.registry",  # Backward compat - will emit warning

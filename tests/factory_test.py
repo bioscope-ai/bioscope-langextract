@@ -20,9 +20,8 @@ for router. The no-name-in-module warning for providers.registry is expected.
 # pylint: disable=no-name-in-module
 
 import os
+import unittest
 from unittest import mock
-
-from absl.testing import absltest
 
 from langextract import exceptions
 from langextract import factory
@@ -65,7 +64,7 @@ class FakeOpenAIProvider(base_model.BaseLanguageModel):
     return self.infer(prompts)
 
 
-class FactoryTest(absltest.TestCase):  # pylint: disable=too-many-public-methods
+class FactoryTest(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
   def setUp(self):
     super().setUp()
@@ -422,4 +421,4 @@ class FactoryTest(absltest.TestCase):  # pylint: disable=too-many-public-methods
 
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

@@ -22,8 +22,6 @@ import reprlib
 import time
 from typing import Any, Callable, Mapping
 
-from absl import logging as absl_logging
-
 _LOG = logging.getLogger("langextract.debug")
 
 # Add NullHandler to prevent "No handler found" warnings
@@ -177,9 +175,3 @@ def configure_debug_logging() -> None:
     handler.langextract_debug = True
     logger.addHandler(handler)
     logger.propagate = False
-
-  # Best-effort absl configuration
-  try:
-    absl_logging.set_verbosity(absl_logging.DEBUG)
-  except Exception:
-    pass

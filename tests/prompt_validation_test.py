@@ -14,49 +14,16 @@
 
 """Tests for prompt validation module."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
+import unittest
 
 from langextract import extraction
 from langextract import prompt_validation
 from langextract.core import data
 
 
-class PromptAlignmentValidationTest(parameterized.TestCase):
+class PromptAlignmentValidationTest(unittest.TestCase):
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="exact_alignment",
-          text="Patient takes lisinopril.",
-          extraction_class="Medication",
-          extraction_text="lisinopril",
-          expected_issues=0,
-          expected_has_failed=False,
-          expected_has_non_exact=False,
-          expected_alignment_status=None,
-      ),
-      dict(
-          testcase_name="fuzzy_match_lesser",
-          text="Type 2 diabetes.",
-          extraction_class="Diagnosis",
-          extraction_text="type-2 diabetes",
-          expected_issues=1,
-          expected_has_failed=False,
-          expected_has_non_exact=True,
-          expected_alignment_status=data.AlignmentStatus.MATCH_LESSER,
-      ),
-      dict(
-          testcase_name="extraction_not_found",
-          text="No medications mentioned in this text.",
-          extraction_class="Medication",
-          extraction_text="lisinopril",
-          expected_issues=1,
-          expected_has_failed=True,
-          expected_has_non_exact=False,
-          expected_alignment_status=None,
-      ),
-  )
-  def test_alignment_detection(
+  def _test_alignment_detection(
       self,
       text,
       extraction_class,
@@ -80,7 +47,7 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
 
     report = prompt_validation.validate_prompt_alignment([example])
 
-    self.assertLen(report.issues, expected_issues)
+    self.assertEqual(len(report.issues), expected_issues)
     self.assertEqual(report.has_failed, expected_has_failed)
     self.assertEqual(report.has_non_exact, expected_has_non_exact)
 
@@ -93,35 +60,40 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
       elif expected_has_non_exact:
         self.assertIsNotNone(issue.alignment_status)
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="one_fails",
-          text="Patient takes lisinopril and has diabetes mellitus.",
-          extractions=[
-              ("Medication", "lisinopril"),  # PASSES - found exactly
-              ("Diagnosis", "diabetes"),  # PASSES - found exactly
-              ("Medication", "metformin"),  # FAILS - not in text
-          ],
-          expected_issues=1,
-          expected_has_failed=True,
-          expected_has_non_exact=False,
-          expected_failed_text="metformin",
-      ),
-      dict(
-          testcase_name="all_pass",
-          text="Patient takes lisinopril and aspirin for diabetes management.",
-          extractions=[
-              ("Medication", "lisinopril"),
-              ("Medication", "aspirin"),
-              ("Diagnosis", "diabetes"),
-          ],
-          expected_issues=0,
-          expected_has_failed=False,
-          expected_has_non_exact=False,
-          expected_failed_text=None,
-      ),
-  )
-  def test_multiple_extractions_per_example(
+  def test_alignment_detection_exact_alignment(self):
+    self._test_alignment_detection(
+        text="Patient takes lisinopril.",
+        extraction_class="Medication",
+        extraction_text="lisinopril",
+        expected_issues=0,
+        expected_has_failed=False,
+        expected_has_non_exact=False,
+        expected_alignment_status=None,
+    )
+
+  def test_alignment_detection_fuzzy_match_lesser(self):
+    self._test_alignment_detection(
+        text="Type 2 diabetes.",
+        extraction_class="Diagnosis",
+        extraction_text="type-2 diabetes",
+        expected_issues=1,
+        expected_has_failed=False,
+        expected_has_non_exact=True,
+        expected_alignment_status=data.AlignmentStatus.MATCH_LESSER,
+    )
+
+  def test_alignment_detection_extraction_not_found(self):
+    self._test_alignment_detection(
+        text="No medications mentioned in this text.",
+        extraction_class="Medication",
+        extraction_text="lisinopril",
+        expected_issues=1,
+        expected_has_failed=True,
+        expected_has_non_exact=False,
+        expected_alignment_status=None,
+    )
+
+  def _test_multiple_extractions_per_example(
       self,
       text,
       extractions,
@@ -145,7 +117,7 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
 
     report = prompt_validation.validate_prompt_alignment([example])
 
-    self.assertLen(report.issues, expected_issues)
+    self.assertEqual(len(report.issues), expected_issues)
     self.assertEqual(report.has_failed, expected_has_failed)
     self.assertEqual(report.has_non_exact, expected_has_non_exact)
 
@@ -154,23 +126,35 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
       self.assertIsNone(issue.alignment_status)
       self.assertEqual(issue.extraction_text_preview, expected_failed_text)
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="warning_mode_with_failed",
-          text="Patient has no known allergies.",
-          extraction_text="penicillin",
-          validation_level=prompt_validation.PromptValidationLevel.WARNING,
-          strict_non_exact=False,
-      ),
-      dict(
-          testcase_name="off_mode_with_failed",
-          text="Patient history incomplete.",
-          extraction_text="aspirin",
-          validation_level=prompt_validation.PromptValidationLevel.OFF,
-          strict_non_exact=False,
-      ),
-  )
-  def test_validation_levels_that_dont_raise(
+  def test_multiple_extractions_one_fails(self):
+    self._test_multiple_extractions_per_example(
+        text="Patient takes lisinopril and has diabetes mellitus.",
+        extractions=[
+            ("Medication", "lisinopril"),  # PASSES - found exactly
+            ("Diagnosis", "diabetes"),  # PASSES - found exactly
+            ("Medication", "metformin"),  # FAILS - not in text
+        ],
+        expected_issues=1,
+        expected_has_failed=True,
+        expected_has_non_exact=False,
+        expected_failed_text="metformin",
+    )
+
+  def test_multiple_extractions_all_pass(self):
+    self._test_multiple_extractions_per_example(
+        text="Patient takes lisinopril and aspirin for diabetes management.",
+        extractions=[
+            ("Medication", "lisinopril"),
+            ("Medication", "aspirin"),
+            ("Diagnosis", "diabetes"),
+        ],
+        expected_issues=0,
+        expected_has_failed=False,
+        expected_has_non_exact=False,
+        expected_failed_text=None,
+    )
+
+  def _test_validation_levels_that_dont_raise(
       self, text, extraction_text, validation_level, strict_non_exact
   ):
     """Test that WARNING and OFF modes don't raise exceptions."""
@@ -192,25 +176,23 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
         report, validation_level, strict_non_exact=strict_non_exact
     )
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="error_mode_failed_alignment",
-          text="Patient has no known allergies.",
-          extraction_class="Medication",
-          extraction_text="penicillin",
-          strict_non_exact=False,
-          error_pattern=r"1 extraction\(s\).*could not be aligned",
-      ),
-      dict(
-          testcase_name="error_mode_strict_fuzzy_match",
-          text="Type 2 diabetes.",
-          extraction_class="Diagnosis",
-          extraction_text="type-2 diabetes",
-          strict_non_exact=True,
-          error_pattern=r"strict mode.*1 non-exact",
-      ),
-  )
-  def test_error_mode_raises_appropriately(
+  def test_warning_mode_with_failed(self):
+    self._test_validation_levels_that_dont_raise(
+        text="Patient has no known allergies.",
+        extraction_text="penicillin",
+        validation_level=prompt_validation.PromptValidationLevel.WARNING,
+        strict_non_exact=False,
+    )
+
+  def test_off_mode_with_failed(self):
+    self._test_validation_levels_that_dont_raise(
+        text="Patient history incomplete.",
+        extraction_text="aspirin",
+        validation_level=prompt_validation.PromptValidationLevel.OFF,
+        strict_non_exact=False,
+    )
+
+  def _test_error_mode_raises_appropriately(
       self,
       text,
       extraction_class,
@@ -241,10 +223,28 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
           strict_non_exact=strict_non_exact,
       )
 
+  def test_error_mode_failed_alignment(self):
+    self._test_error_mode_raises_appropriately(
+        text="Patient has no known allergies.",
+        extraction_class="Medication",
+        extraction_text="penicillin",
+        strict_non_exact=False,
+        error_pattern=r"1 extraction\(s\).*could not be aligned",
+    )
+
+  def test_error_mode_strict_fuzzy_match(self):
+    self._test_error_mode_raises_appropriately(
+        text="Type 2 diabetes.",
+        extraction_class="Diagnosis",
+        extraction_text="type-2 diabetes",
+        strict_non_exact=True,
+        error_pattern=r"strict mode.*1 non-exact",
+    )
+
   def test_empty_examples_produces_empty_report(self):
     report = prompt_validation.validate_prompt_alignment([])
 
-    self.assertEmpty(report.issues)
+    self.assertEqual(len(report.issues), 0)
     self.assertFalse(report.has_failed)
     self.assertFalse(report.has_non_exact)
 
@@ -285,7 +285,7 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
     report = prompt_validation.validate_prompt_alignment(examples)
 
     # Expect 2 issues: example 0 (failed) and example 2 (non-exact)
-    self.assertLen(report.issues, 2)
+    self.assertEqual(len(report.issues), 2)
     self.assertTrue(report.has_failed)
     self.assertTrue(report.has_non_exact)
 
@@ -326,31 +326,7 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
     self.assertIsNone(getattr(original_extraction, "char_interval", None))
     self.assertIsNone(getattr(original_extraction, "alignment_status", None))
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="fuzzy_disabled_rejects_non_exact",
-          text="Patient has type 2 diabetes.",
-          extraction_class="Diagnosis",
-          extraction_text="Type-2 Diabetes",
-          enable_fuzzy=False,
-          accept_lesser=False,
-          fuzzy_threshold=0.75,
-          expected_has_failed=True,
-          expected_has_non_exact=False,
-      ),
-      dict(
-          testcase_name="fuzzy_enabled_accepts_close_match",
-          text="Patient has type 2 diabetes.",
-          extraction_class="Diagnosis",
-          extraction_text="Type-2 Diabetes",
-          enable_fuzzy=True,
-          accept_lesser=False,
-          fuzzy_threshold=0.75,
-          expected_has_failed=False,
-          expected_has_non_exact=True,
-      ),
-  )
-  def test_alignment_policies(
+  def _test_alignment_policies(
       self,
       text,
       extraction_class,
@@ -390,8 +366,32 @@ class PromptAlignmentValidationTest(parameterized.TestCase):
     self.assertEqual(report.has_failed, expected_has_failed)
     self.assertEqual(report.has_non_exact, expected_has_non_exact)
 
+  def test_fuzzy_disabled_rejects_non_exact(self):
+    self._test_alignment_policies(
+        text="Patient has type 2 diabetes.",
+        extraction_class="Diagnosis",
+        extraction_text="Type-2 Diabetes",
+        enable_fuzzy=False,
+        accept_lesser=False,
+        fuzzy_threshold=0.75,
+        expected_has_failed=True,
+        expected_has_non_exact=False,
+    )
 
-class ExtractIntegrationTest(absltest.TestCase):
+  def test_fuzzy_enabled_accepts_close_match(self):
+    self._test_alignment_policies(
+        text="Patient has type 2 diabetes.",
+        extraction_class="Diagnosis",
+        extraction_text="Type-2 Diabetes",
+        enable_fuzzy=True,
+        accept_lesser=False,
+        fuzzy_threshold=0.75,
+        expected_has_failed=False,
+        expected_has_non_exact=True,
+    )
+
+
+class ExtractIntegrationTest(unittest.TestCase):
   """Minimal integration test for extract() entry point validation."""
 
   def test_extract_validates_in_error_mode(self):
@@ -423,4 +423,4 @@ class ExtractIntegrationTest(absltest.TestCase):
 
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

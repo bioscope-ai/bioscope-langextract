@@ -16,9 +16,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 import json
 import re
-from typing import Mapping, Sequence
 import warnings
 
 import yaml
@@ -202,13 +202,12 @@ class FormatHandler:
               f"Content must contain an '{self.wrapper_key}' key."
           )
         items = parsed[self.wrapper_key]
+      elif data.EXTRACTIONS_KEY in parsed:
+        items = parsed[data.EXTRACTIONS_KEY]
+      elif self.wrapper_key and self.wrapper_key in parsed:
+        items = parsed[self.wrapper_key]
       else:
-        if data.EXTRACTIONS_KEY in parsed:
-          items = parsed[data.EXTRACTIONS_KEY]
-        elif self.wrapper_key and self.wrapper_key in parsed:
-          items = parsed[self.wrapper_key]
-        else:
-          items = [parsed]
+        items = [parsed]
     elif isinstance(parsed, list):
       if require_wrapper:
         raise exceptions.FormatParseError(

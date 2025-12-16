@@ -48,7 +48,6 @@ docs/_build/
 
 # IDE / Editor specific
 .idea/
-.vscode/
 *.swp
 *.swo
 *~

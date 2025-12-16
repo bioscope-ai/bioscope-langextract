@@ -15,10 +15,11 @@
 """Library for data conversion between AnnotatedDocument and JSON."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 import dataclasses
 import enum
 import numbers
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from langextract.core import data
 from langextract.core import tokenizer

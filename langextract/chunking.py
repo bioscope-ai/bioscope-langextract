@@ -22,10 +22,12 @@ inference on.
 
 from collections.abc import Iterable, Iterator, Sequence
 import dataclasses
+import logging
 import re
 
-from absl import logging
 import more_itertools
+
+_logger = logging.getLogger(__name__)
 
 from langextract.core import data
 from langextract.core import exceptions
@@ -196,7 +198,7 @@ def get_token_interval_text(
         f"{token_interval.end_index}."
     )
   return_string = tokenizer_lib.tokens_text(tokenized_text, token_interval)
-  logging.debug(
+  _logger.debug(
       "Token util returns string: %s for tokenized_text: %s, token_interval:"
       " %s",
       return_string,

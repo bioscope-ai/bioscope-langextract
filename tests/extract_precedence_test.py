@@ -14,17 +14,24 @@
 
 """Tests for parameter precedence in extract()."""
 
+import unittest
 from unittest import mock
-
-from absl.testing import absltest
 
 from langextract import factory
 import langextract as lx
+from langextract.core import base_model
 from langextract.core import data
-from langextract.providers import openai
+from langextract.core import types
 
 
-class ExtractParameterPrecedenceTest(absltest.TestCase):
+class FakeLanguageModel(base_model.BaseLanguageModel):
+  """Fake language model for testing."""
+
+  def infer(self, batch_prompts, **kwargs):
+    return [[types.ScoredOutput(score=1.0, output="")] for _ in batch_prompts]
+
+
+class ExtractParameterPrecedenceTest(unittest.TestCase):
   """Tests ensuring correct precedence among extract() parameters."""
 
   def setUp(self):
@@ -62,7 +69,7 @@ class ExtractParameterPrecedenceTest(absltest.TestCase):
         config=config,
         model_id="ignored-model",
         api_key="ignored-key",
-        language_model_type=openai.OpenAILanguageModel,
+        language_model_type=FakeLanguageModel,
         use_schema_constraints=False,
     )
 
@@ -96,7 +103,7 @@ class ExtractParameterPrecedenceTest(absltest.TestCase):
           config=config,
           model_id="other-model",
           api_key="other-key",
-          language_model_type=openai.OpenAILanguageModel,
+          language_model_type=FakeLanguageModel,
           use_schema_constraints=False,
       )
       mock_model_config.assert_not_called()
@@ -134,7 +141,7 @@ class ExtractParameterPrecedenceTest(absltest.TestCase):
             api_key="api-key",
             temperature=0.9,
             model_url="http://model",
-            language_model_type=openai.OpenAILanguageModel,
+            language_model_type=FakeLanguageModel,
             use_schema_constraints=False,
         )
 
@@ -169,7 +176,7 @@ class ExtractParameterPrecedenceTest(absltest.TestCase):
             text_or_documents="text",
             prompt_description=self.description,
             examples=self.examples,
-            language_model_type=openai.OpenAILanguageModel,
+            language_model_type=FakeLanguageModel,
             use_schema_constraints=False,
         )
 
@@ -237,4 +244,4 @@ class ExtractParameterPrecedenceTest(absltest.TestCase):
 
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

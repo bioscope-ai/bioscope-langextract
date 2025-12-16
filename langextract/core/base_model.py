@@ -18,6 +18,7 @@ from __future__ import annotations
 import abc
 from collections.abc import Iterator, Sequence
 import json
+import logging
 from typing import Any, Mapping
 
 import yaml
@@ -33,17 +34,26 @@ class BaseLanguageModel(abc.ABC):
 
   Attributes:
     _constraint: A `Constraint` object specifying constraints for model output.
+    _logger: Logger instance for this model.
   """
 
-  def __init__(self, constraint: types.Constraint | None = None, **kwargs: Any):
+  def __init__(
+      self,
+      constraint: types.Constraint | None = None,
+      logger: logging.Logger | None = None,
+      **kwargs: Any,
+  ):
     """Initializes the BaseLanguageModel with an optional constraint.
 
     Args:
       constraint: Applies constraints when decoding the output. Defaults to no
         constraint.
+      logger: Optional logger instance. If None, uses a logger named after the
+        class.
       **kwargs: Additional keyword arguments passed to the model.
     """
     self._constraint = constraint or types.Constraint()
+    self._logger = logger or logging.getLogger(self.__class__.__name__)
     self._schema: schema.BaseSchema | None = None
     self._fence_output_override: bool | None = None
     self._extra_kwargs: dict[str, Any] = kwargs.copy()

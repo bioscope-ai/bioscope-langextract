@@ -21,8 +21,7 @@ Test helper classes also intentionally have few public methods.
 # pylint: disable=no-name-in-module
 
 import re
-
-from absl.testing import absltest
+import unittest
 
 from langextract import exceptions
 from langextract.core import base_model
@@ -50,7 +49,7 @@ class AnotherFakeProvider(base_model.BaseLanguageModel):
     return self.infer(prompts)
 
 
-class RegistryTest(absltest.TestCase):
+class RegistryTest(unittest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -235,4 +234,4 @@ class RegistryTest(absltest.TestCase):
 
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

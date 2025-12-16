@@ -26,12 +26,13 @@ from collections.abc import Iterator, Mapping, Sequence
 import difflib
 import functools
 import itertools
+import logging
 import operator
 from typing import Final
 
-from absl import logging
-
 from langextract.core import data
+
+_logger = logging.getLogger(__name__)
 from langextract.core import exceptions
 from langextract.core import format_handler as fh
 from langextract.core import schema
@@ -251,8 +252,8 @@ class Resolver(AbstractResolver):
         ResolverParsingError: If the content within the string cannot be parsed
         due to formatting errors, or if the parsed content is not as expected.
     """
-    logging.debug("Starting resolver process for input text.")
-    logging.debug("Input Text: %s", input_text)
+    _logger.debug("Starting resolver process for input text.")
+    _logger.debug("Input Text: %s", input_text)
 
     try:
       constraint = getattr(self, "_constraint", schema.Constraint())
@@ -260,11 +261,11 @@ class Resolver(AbstractResolver):
       extraction_data = self.format_handler.parse_output(
           input_text, strict=strict
       )
-      logging.debug("Parsed content: %s", extraction_data)
+      _logger.debug("Parsed content: %s", extraction_data)
 
     except exceptions.FormatError as e:
       if suppress_parse_errors:
-        logging.exception(
+        _logger.exception(
             "Failed to parse input_text: %s, error: %s", input_text, e
         )
         return []
@@ -272,7 +273,7 @@ class Resolver(AbstractResolver):
 
     processed_extractions = self.extract_ordered_extractions(extraction_data)
 
-    logging.debug("Completed the resolver process.")
+    _logger.debug("Completed the resolver process.")
 
     return processed_extractions
 
@@ -312,10 +313,10 @@ class Resolver(AbstractResolver):
     Yields:
         Iterator on aligned extractions.
     """
-    logging.debug("Starting alignment process for provided chunk text.")
+    _logger.debug("Starting alignment process for provided chunk text.")
 
     if not extractions:
-      logging.debug(
+      _logger.debug(
           "No extractions found in the annotated text; exiting alignment"
           " process."
       )
@@ -334,16 +335,16 @@ class Resolver(AbstractResolver):
         accept_match_lesser=accept_match_lesser,
         tokenizer_impl=tokenizer_inst,
     )
-    logging.debug(
+    _logger.debug(
         "Aligned extractions count: %d",
         sum(len(group) for group in aligned_yaml_extractions),
     )
 
     for extraction in itertools.chain(*aligned_yaml_extractions):
-      logging.debug("Yielding aligned extraction: %s", extraction)
+      _logger.debug("Yielding aligned extraction: %s", extraction)
       yield extraction
 
-    logging.debug("Completed alignment process for the provided source_text.")
+    _logger.debug("Completed alignment process for the provided source_text.")
 
   def string_to_extraction_data(
       self,
@@ -365,7 +366,7 @@ class Resolver(AbstractResolver):
         ValueError: If the input is invalid or does not contain expected format.
     """
     if not input_string or not isinstance(input_string, str):
-      logging.error("Input string must be a non-empty string.")
+      _logger.error("Input string must be a non-empty string.")
       raise ValueError("Input string must be a non-empty string.")
 
     try:
@@ -377,7 +378,7 @@ class Resolver(AbstractResolver):
       raise ResolverParsingError(str(e)) from e
 
     except Exception as e:
-      logging.exception("Failed to parse content.")
+      _logger.exception("Failed to parse content.")
       raise ResolverParsingError("Failed to parse content.") from e
 
   def extract_ordered_extractions(
@@ -407,10 +408,10 @@ class Resolver(AbstractResolver):
         ValueError: If the extraction text is not a string or integer, or if the
         index is not an integer.
     """
-    logging.debug("Starting to extract and order extractions from data.")
+    _logger.debug("Starting to extract and order extractions from data.")
 
     if not extraction_data:
-      logging.debug("Received empty extraction data.")
+      _logger.debug("Received empty extraction data.")
 
     processed_extractions = []
     extraction_index = 0
@@ -421,7 +422,7 @@ class Resolver(AbstractResolver):
       for extraction_class, extraction_value in group.items():
         if index_suffix and extraction_class.endswith(index_suffix):
           if not isinstance(extraction_value, int):
-            logging.error(
+            _logger.error(
                 "Index must be an integer. Found: %s",
                 type(extraction_value),
             )
@@ -430,7 +431,7 @@ class Resolver(AbstractResolver):
 
         if attributes_suffix and extraction_class.endswith(attributes_suffix):
           if not isinstance(extraction_value, (dict, type(None))):
-            logging.error(
+            _logger.error(
                 "Attributes must be a dict or None. Found: %s",
                 type(extraction_value),
             )
@@ -440,7 +441,7 @@ class Resolver(AbstractResolver):
           continue
 
         if not isinstance(extraction_value, (str, int, float)):
-          logging.error(
+          _logger.error(
               "Extraction text must be a string, integer, or float. Found: %s",
               type(extraction_value),
           )
@@ -455,7 +456,7 @@ class Resolver(AbstractResolver):
           index_key = extraction_class + index_suffix
           extraction_index = group.get(index_key, None)
           if extraction_index is None:
-            logging.debug(
+            _logger.debug(
                 "No index value for %s. Skipping extraction.", extraction_class
             )
             continue
@@ -478,7 +479,7 @@ class Resolver(AbstractResolver):
         )
 
     processed_extractions.sort(key=operator.attrgetter("extraction_index"))
-    logging.debug("Completed extraction and ordering of extractions.")
+    _logger.debug("Completed extraction and ordering of extractions.")
     return processed_extractions
 
 
@@ -577,7 +578,7 @@ class WordAligner:
     if not extraction_tokens:
       return None
 
-    logging.debug(
+    _logger.debug(
         "Fuzzy aligning %r (%d tokens)",
         extraction.extraction_text,
         len(extraction_tokens),
@@ -653,7 +654,7 @@ class WordAligner:
         extraction.alignment_status = data.AlignmentStatus.MATCH_FUZZY
         return extraction
       except IndexError:
-        logging.exception(
+        _logger.exception(
             "Index error while setting intervals during fuzzy alignment."
         )
         return None
@@ -703,13 +704,13 @@ class WordAligner:
       A sequence of extractions aligned with the source text, including token
       intervals.
     """
-    logging.debug(
+    _logger.debug(
         "WordAligner: Starting alignment of extractions with the source text."
         " Extraction groups to align: %s",
         extraction_groups,
     )
     if not extraction_groups:
-      logging.info("No extraction groups provided; returning empty list.")
+      _logger.info("No extraction groups provided; returning empty list.")
       return []
 
     source_tokens = list(
@@ -722,7 +723,7 @@ class WordAligner:
     if delim_len != 1:
       raise ValueError(f"Delimiter {delim!r} must be a single token.")
 
-    logging.debug("Using delimiter %r for extraction alignment", delim)
+    _logger.debug("Using delimiter %r for extraction alignment", delim)
 
     extraction_tokens = list(
         _tokenize_with_lowercase(
@@ -739,7 +740,7 @@ class WordAligner:
     index_to_extraction_group = {}
     extraction_index = 0
     for group_index, group in enumerate(extraction_groups):
-      logging.debug(
+      _logger.debug(
           "Processing extraction group %d with %d extractions.",
           group_index,
           len(group),
@@ -779,7 +780,7 @@ class WordAligner:
     for i, j, n in self._get_matching_blocks()[:-1]:
       extraction, _ = index_to_extraction_group.get(j, (None, None))
       if extraction is None:
-        logging.debug(
+        _logger.debug(
             "No clean start index found for extraction index=%d iterating"
             " Difflib matching_blocks",
             j,
@@ -841,7 +842,7 @@ class WordAligner:
 
     # Apply fuzzy alignment to remaining extractions
     if enable_fuzzy_alignment and unaligned_extractions:
-      logging.debug(
+      _logger.debug(
           "Starting fuzzy alignment for %d unaligned extractions",
           len(unaligned_extractions),
       )
@@ -857,7 +858,7 @@ class WordAligner:
         )
         if aligned_extraction:
           aligned_extractions.append(aligned_extraction)
-          logging.debug(
+          _logger.debug(
               "Fuzzy alignment successful for extraction: %s",
               extraction.extraction_text,
           )
@@ -865,7 +866,7 @@ class WordAligner:
     for extraction, group_index in index_to_extraction_group.values():
       aligned_extraction_groups[group_index].append(extraction)
 
-    logging.debug(
+    _logger.debug(
         "Final aligned extraction groups: %s", aligned_extraction_groups
     )
     return aligned_extraction_groups
