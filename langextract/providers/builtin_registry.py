@@ -14,13 +14,12 @@
 
 """Built-in provider registration configuration.
 
-This module defines the registration details for all built-in providers,
-using patterns from the centralized patterns module.
+This module defines the registration details for all built-in providers.
+Note: All built-in providers have been removed from this fork for serverless
+deployment. Custom providers should be registered via the router module.
 """
 
 from typing import TypedDict
-
-from langextract.providers import patterns
 
 
 class ProviderConfig(TypedDict):
@@ -31,21 +30,5 @@ class ProviderConfig(TypedDict):
   priority: int
 
 
-# Built-in provider configurations using centralized patterns
-BUILTIN_PROVIDERS: list[ProviderConfig] = [
-    {
-        'patterns': patterns.GEMINI_PATTERNS,
-        'target': 'langextract.providers.gemini:GeminiLanguageModel',
-        'priority': patterns.GEMINI_PRIORITY,
-    },
-    {
-        'patterns': patterns.OLLAMA_PATTERNS,
-        'target': 'langextract.providers.ollama:OllamaLanguageModel',
-        'priority': patterns.OLLAMA_PRIORITY,
-    },
-    {
-        'patterns': patterns.OPENAI_PATTERNS,
-        'target': 'langextract.providers.openai:OpenAILanguageModel',
-        'priority': patterns.OPENAI_PRIORITY,
-    },
-]
+# Built-in provider configurations - empty in this fork
+BUILTIN_PROVIDERS: list[ProviderConfig] = []

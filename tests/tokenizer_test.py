@@ -13,141 +13,139 @@
 # limitations under the License.
 
 import textwrap
-
-from absl.testing import absltest
-from absl.testing import parameterized
+import unittest
 
 from langextract.core import tokenizer
 
 
-class TokenizerTest(parameterized.TestCase):
-  # pylint: disable=too-many-public-methods
+class TokenizerTest(unittest.TestCase):
 
   def assertTokenListEqual(self, actual_tokens, expected_tokens, msg=None):
-    self.assertLen(actual_tokens, len(expected_tokens), msg=msg)
+    self.assertEqual(len(actual_tokens), len(expected_tokens), msg=msg)
     for i, (expected, actual) in enumerate(zip(expected_tokens, actual_tokens)):
-      expected = tokenizer.Token(
+      expected_normalized = tokenizer.Token(
           index=expected.index,
           token_type=expected.token_type,
           first_token_after_newline=expected.first_token_after_newline,
       )
-      actual = tokenizer.Token(
+      actual_normalized = tokenizer.Token(
           index=actual.index,
           token_type=actual.token_type,
           first_token_after_newline=actual.first_token_after_newline,
       )
-      self.assertDataclassEqual(
-          expected,
-          actual,
+      self.assertEqual(
+          expected_normalized,
+          actual_normalized,
           msg=f"Token mismatch at index {i}",
       )
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="basic_text",
-          input_text="Hello, world!",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=1, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=3, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="multiple_spaces_and_numbers",
-          input_text="Age:   25\nWeight=70kg.",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=1, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(index=2, token_type=tokenizer.TokenType.NUMBER),
-              tokenizer.Token(
-                  index=3,
-                  token_type=tokenizer.TokenType.WORD,
-                  first_token_after_newline=True,
-              ),
-              tokenizer.Token(
-                  index=4, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(index=5, token_type=tokenizer.TokenType.NUMBER),
-              tokenizer.Token(index=6, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=7, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="multi_line_input",
-          input_text="Line1\nLine2\nLine3",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=1, token_type=tokenizer.TokenType.NUMBER),
-              tokenizer.Token(
-                  index=2,
-                  token_type=tokenizer.TokenType.WORD,
-                  first_token_after_newline=True,
-              ),
-              tokenizer.Token(index=3, token_type=tokenizer.TokenType.NUMBER),
-              tokenizer.Token(
-                  index=4,
-                  token_type=tokenizer.TokenType.WORD,
-                  first_token_after_newline=True,
-              ),
-              tokenizer.Token(index=5, token_type=tokenizer.TokenType.NUMBER),
-          ],
-      ),
-      dict(
-          testcase_name="only_symbols",
-          input_text="!!!@#   $$$%",
-          expected_tokens=[
-              tokenizer.Token(
-                  index=0, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(
-                  index=1, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(
-                  index=2, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(
-                  index=3, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(
-                  index=4, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="empty_string",
-          input_text="",
-          expected_tokens=[],
-      ),
-      dict(
-          testcase_name="non_ascii_text",
-          input_text="café",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-          ],
-      ),
-      dict(
-          testcase_name="mixed_punctuation",
-          input_text="?!",
-          expected_tokens=[
-              tokenizer.Token(
-                  index=0, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(
-                  index=1, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-          ],
-      ),
-  )
-  def test_tokenize_various_inputs(self, input_text, expected_tokens):
+  def test_tokenize_basic_text(self):
+    input_text = "Hello, world!"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.PUNCTUATION),
+    ]
+    tokenized = tokenizer.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_tokenize_multiple_spaces_and_numbers(self):
+    input_text = "Age:   25\nWeight=70kg."
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=2, token_type=tokenizer.TokenType.NUMBER),
+        tokenizer.Token(
+            index=3,
+            token_type=tokenizer.TokenType.WORD,
+            first_token_after_newline=True,
+        ),
+        tokenizer.Token(index=4, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=5, token_type=tokenizer.TokenType.NUMBER),
+        tokenizer.Token(index=6, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=7, token_type=tokenizer.TokenType.PUNCTUATION),
+    ]
+    tokenized = tokenizer.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_tokenize_multi_line_input(self):
+    input_text = "Line1\nLine2\nLine3"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.NUMBER),
+        tokenizer.Token(
+            index=2,
+            token_type=tokenizer.TokenType.WORD,
+            first_token_after_newline=True,
+        ),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.NUMBER),
+        tokenizer.Token(
+            index=4,
+            token_type=tokenizer.TokenType.WORD,
+            first_token_after_newline=True,
+        ),
+        tokenizer.Token(index=5, token_type=tokenizer.TokenType.NUMBER),
+    ]
+    tokenized = tokenizer.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_tokenize_only_symbols(self):
+    input_text = "!!!@#   $$$%"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=2, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=4, token_type=tokenizer.TokenType.PUNCTUATION),
+    ]
+    tokenized = tokenizer.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_tokenize_empty_string(self):
+    input_text = ""
+    expected_tokens = []
+    tokenized = tokenizer.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_tokenize_non_ascii_text(self):
+    input_text = "café"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+    ]
+    tokenized = tokenizer.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_tokenize_mixed_punctuation(self):
+    input_text = "?!"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.PUNCTUATION),
+    ]
     tokenized = tokenizer.tokenize(input_text)
     self.assertTokenListEqual(
         tokenized.tokens,
@@ -160,32 +158,20 @@ class TokenizerTest(parameterized.TestCase):
     tokenized = tokenizer.tokenize(input_text)
 
     expected_tokens = [
-        tokenizer.Token(
-            index=0,
-            token_type=tokenizer.TokenType.WORD,
-        ),
-        tokenizer.Token(
-            index=1,
-            token_type=tokenizer.TokenType.NUMBER,
-        ),
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.NUMBER),
         tokenizer.Token(
             index=2,
             token_type=tokenizer.TokenType.WORD,
             first_token_after_newline=True,
         ),
-        tokenizer.Token(
-            index=3,
-            token_type=tokenizer.TokenType.NUMBER,
-        ),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.NUMBER),
         tokenizer.Token(
             index=4,
             token_type=tokenizer.TokenType.WORD,
             first_token_after_newline=True,
         ),
-        tokenizer.Token(
-            index=5,
-            token_type=tokenizer.TokenType.NUMBER,
-        ),
+        tokenizer.Token(index=5, token_type=tokenizer.TokenType.NUMBER),
     ]
 
     self.assertTokenListEqual(
@@ -199,25 +185,24 @@ class TokenizerTest(parameterized.TestCase):
     tok = tokenizer.RegexTokenizer()
     text = ""
     tokenized = tok.tokenize(text)
-    self.assertEmpty(tokenized.tokens)
+    self.assertEqual(len(tokenized.tokens), 0)
 
     text = "\n"
     tokenized = tok.tokenize(text)
-    self.assertEmpty(tokenized.tokens)
+    self.assertEqual(len(tokenized.tokens), 0)
 
     text = "A\nB"
     tokenized = tok.tokenize(text)
-    self.assertLen(tokenized.tokens, 2)
+    self.assertEqual(len(tokenized.tokens), 2)
     self.assertTrue(tokenized.tokens[1].first_token_after_newline)
 
   def test_underscore_handling(self):
     """Verify that underscores are preserved as punctuation/symbols."""
-    # RegexTokenizer should now capture underscores explicitly.
     tok = tokenizer.RegexTokenizer()
     text = "user_id"
     tokenized = tok.tokenize(text)
     # Expecting: "user", "_", "id"
-    self.assertLen(tokenized.tokens, 3)
+    self.assertEqual(len(tokenized.tokens), 3)
     self.assertEqual(tokenized.tokens[0].token_type, tokenizer.TokenType.WORD)
     self.assertEqual(
         tokenized.tokens[1].token_type, tokenizer.TokenType.PUNCTUATION
@@ -225,11 +210,10 @@ class TokenizerTest(parameterized.TestCase):
     self.assertEqual(tokenized.tokens[2].token_type, tokenizer.TokenType.WORD)
 
 
-class UnicodeTokenizerTest(parameterized.TestCase):
-  # pylint: disable=too-many-public-methods
+class UnicodeTokenizerTest(unittest.TestCase):
 
   def assertTokenListEqual(self, actual_tokens, expected_tokens, msg=None):
-    self.assertLen(actual_tokens, len(expected_tokens), msg=msg)
+    self.assertEqual(len(actual_tokens), len(expected_tokens), msg=msg)
     for i, (expected, actual) in enumerate(zip(expected_tokens, actual_tokens)):
       expected_tok = tokenizer.Token(
           index=expected.index,
@@ -241,58 +225,25 @@ class UnicodeTokenizerTest(parameterized.TestCase):
           token_type=actual.token_type,
           first_token_after_newline=actual.first_token_after_newline,
       )
-      self.assertDataclassEqual(
+      self.assertEqual(
           expected_tok,
           actual_tok,
           msg=f"Token mismatch at index {i}",
       )
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="japanese_text",
-          input_text="こんにちは、世界！",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=1, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=3, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=4, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=5, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(index=6, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=7, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=8, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="english_text",
-          input_text="Hello, world!",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=1, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-              tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(
-                  index=3, token_type=tokenizer.TokenType.PUNCTUATION
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="mixed_text",
-          input_text="Hello 世界 123",
-          expected_tokens=[
-              tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=1, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
-              tokenizer.Token(index=3, token_type=tokenizer.TokenType.NUMBER),
-          ],
-      ),
-  )
-  def test_tokenize_various_inputs(self, input_text, expected_tokens):
+  def test_tokenize_japanese_text(self):
+    input_text = "こんにちは、世界！"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=4, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=5, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=6, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=7, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=8, token_type=tokenizer.TokenType.PUNCTUATION),
+    ]
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(input_text)
     self.assertTokenListEqual(
@@ -301,52 +252,50 @@ class UnicodeTokenizerTest(parameterized.TestCase):
         msg=f"Tokens mismatch for input: {input_text!r}",
     )
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="mixed_digit_han_same_type_grouping",
-          input_text="10毫克",  # "10 milligrams"
-          expected_tokens=[
-              ("10", tokenizer.TokenType.NUMBER),
-              ("毫", tokenizer.TokenType.WORD),
-              ("克", tokenizer.TokenType.WORD),
-          ],
-          expected_first_after_newline=[False, False, False],
-      ),
-      dict(
-          testcase_name="underscore_word_separator",
-          input_text="hello_world",
-          expected_tokens=[
-              ("hello", tokenizer.TokenType.WORD),
-              ("_", tokenizer.TokenType.PUNCTUATION),
-              ("world", tokenizer.TokenType.WORD),
-          ],
-          expected_first_after_newline=[False, False, False],
-      ),
-      dict(
-          testcase_name="leading_trailing_underscores",
-          input_text="_test_case_",
-          expected_tokens=[
-              ("_", tokenizer.TokenType.PUNCTUATION),
-              ("test", tokenizer.TokenType.WORD),
-              ("_", tokenizer.TokenType.PUNCTUATION),
-              ("case", tokenizer.TokenType.WORD),
-              ("_", tokenizer.TokenType.PUNCTUATION),
-          ],
-          expected_first_after_newline=[False, False, False, False, False],
-      ),
-  )
-  def test_special_unicode_and_punctuation_handling(
-      self, input_text, expected_tokens, expected_first_after_newline
-  ):
-    """Test special Unicode sequences, punctuation grouping, and script handling edge cases."""
+  def test_tokenize_english_text(self):
+    input_text = "Hello, world!"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.PUNCTUATION),
+        tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.PUNCTUATION),
+    ]
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(input_text)
-    self.assertLen(
+    self.assertTokenListEqual(
         tokenized.tokens,
-        len(expected_tokens),
-        f"Expected {len(expected_tokens)} tokens for edge case test, but got"
-        f" {len(tokenized.tokens)}",
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
     )
+
+  def test_tokenize_mixed_text(self):
+    input_text = "Hello 世界 123"
+    expected_tokens = [
+        tokenizer.Token(index=0, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=1, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=2, token_type=tokenizer.TokenType.WORD),
+        tokenizer.Token(index=3, token_type=tokenizer.TokenType.NUMBER),
+    ]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertTokenListEqual(
+        tokenized.tokens,
+        expected_tokens,
+        msg=f"Tokens mismatch for input: {input_text!r}",
+    )
+
+  def test_mixed_digit_han_same_type_grouping(self):
+    """Test mixed digit and Han characters."""
+    input_text = "10毫克"  # "10 milligrams"
+    expected_tokens = [
+        ("10", tokenizer.TokenType.NUMBER),
+        ("毫", tokenizer.TokenType.WORD),
+        ("克", tokenizer.TokenType.WORD),
+    ]
+    expected_first_after_newline = [False, False, False]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
 
     for i, (
         token,
@@ -359,14 +308,82 @@ class UnicodeTokenizerTest(parameterized.TestCase):
           token.char_interval.start_pos : token.char_interval.end_pos
       ]
       self.assertEqual(
-          actual_text,
-          expected_text,
-          msg=f"Token {i} text mismatch.",
+          actual_text, expected_text, msg=f"Token {i} text mismatch."
       )
       self.assertEqual(
-          token.token_type,
-          expected_type,
-          msg=f"Token {i} type mismatch.",
+          token.token_type, expected_type, msg=f"Token {i} type mismatch."
+      )
+      self.assertEqual(
+          token.first_token_after_newline,
+          expected_newline,
+          msg=f"Token {i} newline flag mismatch.",
+      )
+
+  def test_underscore_word_separator(self):
+    """Test underscore as word separator."""
+    input_text = "hello_world"
+    expected_tokens = [
+        ("hello", tokenizer.TokenType.WORD),
+        ("_", tokenizer.TokenType.PUNCTUATION),
+        ("world", tokenizer.TokenType.WORD),
+    ]
+    expected_first_after_newline = [False, False, False]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
+
+    for i, (
+        token,
+        (expected_text, expected_type),
+        expected_newline,
+    ) in enumerate(
+        zip(tokenized.tokens, expected_tokens, expected_first_after_newline)
+    ):
+      actual_text = input_text[
+          token.char_interval.start_pos : token.char_interval.end_pos
+      ]
+      self.assertEqual(
+          actual_text, expected_text, msg=f"Token {i} text mismatch."
+      )
+      self.assertEqual(
+          token.token_type, expected_type, msg=f"Token {i} type mismatch."
+      )
+      self.assertEqual(
+          token.first_token_after_newline,
+          expected_newline,
+          msg=f"Token {i} newline flag mismatch.",
+      )
+
+  def test_leading_trailing_underscores(self):
+    """Test leading and trailing underscores."""
+    input_text = "_test_case_"
+    expected_tokens = [
+        ("_", tokenizer.TokenType.PUNCTUATION),
+        ("test", tokenizer.TokenType.WORD),
+        ("_", tokenizer.TokenType.PUNCTUATION),
+        ("case", tokenizer.TokenType.WORD),
+        ("_", tokenizer.TokenType.PUNCTUATION),
+    ]
+    expected_first_after_newline = [False, False, False, False, False]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
+
+    for i, (
+        token,
+        (expected_text, expected_type),
+        expected_newline,
+    ) in enumerate(
+        zip(tokenized.tokens, expected_tokens, expected_first_after_newline)
+    ):
+      actual_text = input_text[
+          token.char_interval.start_pos : token.char_interval.end_pos
+      ]
+      self.assertEqual(
+          actual_text, expected_text, msg=f"Token {i} text mismatch."
+      )
+      self.assertEqual(
+          token.token_type, expected_type, msg=f"Token {i} type mismatch."
       )
       self.assertEqual(
           token.first_token_after_newline,
@@ -394,7 +411,7 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(input_text)
 
-    self.assertLen(tokenized.tokens, 3)
+    self.assertEqual(len(tokenized.tokens), 3)
     for token in tokenized.tokens:
       self.assertEqual(token.token_type, tokenizer.TokenType.WORD)
 
@@ -406,16 +423,13 @@ class UnicodeTokenizerTest(parameterized.TestCase):
 
     expected_tokens = [
         ("Hello", tokenizer.TokenType.WORD),
-        (
-            "👋🏼",
-            tokenizer.TokenType.PUNCTUATION,
-        ),
+        ("👋🏼", tokenizer.TokenType.PUNCTUATION),
         ("世", tokenizer.TokenType.WORD),
         ("界", tokenizer.TokenType.WORD),
         ("123", tokenizer.TokenType.NUMBER),
     ]
 
-    self.assertLen(tokenized.tokens, len(expected_tokens))
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
     for i, (expected_text, expected_type) in enumerate(expected_tokens):
       token = tokenized.tokens[i]
       actual_text = tokenized.text[
@@ -430,7 +444,7 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     text = "HelloПривет"
     tokenized = tok.tokenize(text)
 
-    self.assertLen(tokenized.tokens, 2, "Should be split into 2 tokens")
+    self.assertEqual(len(tokenized.tokens), 2, "Should be split into 2 tokens")
     self.assertEqual(tokenized.tokens[0].token_type, tokenizer.TokenType.WORD)
     self.assertEqual(tokenized.tokens[1].token_type, tokenizer.TokenType.WORD)
 
@@ -457,7 +471,7 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     self.assertGreater(
         len(tokenized.tokens), 1, "Should not be grouped into a single token"
     )
-    self.assertLen(tokenized.tokens, 4)
+    self.assertEqual(len(tokenized.tokens), 4)
 
   def test_cjk_detection_regex(self):
     """Test that CJK characters are detected and not grouped."""
@@ -465,7 +479,7 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     text = "你好"
     tokenized = tok.tokenize(text)
 
-    self.assertLen(tokenized.tokens, 2)
+    self.assertEqual(len(tokenized.tokens), 2)
     self.assertEqual(tokenized.tokens[0].token_type, tokenizer.TokenType.WORD)
     self.assertEqual(tokenized.tokens[1].token_type, tokenizer.TokenType.WORD)
 
@@ -475,7 +489,7 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     text = "LineA\nLineB"
     tokenized = tok.tokenize(text)
 
-    self.assertLen(tokenized.tokens, 2)
+    self.assertEqual(len(tokenized.tokens), 2)
     self.assertEqual(tokenized.tokens[0].first_token_after_newline, False)
     self.assertTrue(tokenized.tokens[1].first_token_after_newline)
 
@@ -485,17 +499,15 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     text = "\nLineA"
     tokenized = tok.tokenize(text)
 
-    self.assertLen(tokenized.tokens, 1)
+    self.assertEqual(len(tokenized.tokens), 1)
     self.assertTrue(tokenized.tokens[0].first_token_after_newline)
 
   def test_mixed_line_endings(self):
     """Test mixed line endings (\\r\\n)."""
-    # \\r\\n should be treated as a single newline for the purpose of the flag,
-    # or at least trigger it.
     text = "LineOne\r\nLineTwo"
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(text)
-    self.assertLen(tokenized.tokens, 2)
+    self.assertEqual(len(tokenized.tokens), 2)
     self.assertTrue(tokenized.tokens[1].first_token_after_newline)
 
   def test_mixed_uncommon_scripts_no_grouping(self):
@@ -507,8 +519,8 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     tokenized = tok.tokenize(text)
 
     # Unknown scripts are fragmented into characters for safety.
-    self.assertLen(
-        tokenized.tokens,
+    self.assertEqual(
+        len(tokenized.tokens),
         13,
         "Should be fragmented into characters for safety (13 tokens)",
     )
@@ -516,30 +528,28 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     self.assertEqual(tokenized.tokens[1].token_type, tokenizer.TokenType.WORD)
 
   def test_unknown_script_merging_edge_case(self):
-    # Verify that adjacent IDENTICAL unknown scripts are fragmented for safety.
-    # Armenian "Բարև" + Armenian "Բարև".
+    """Verify that adjacent IDENTICAL unknown scripts are fragmented for safety."""
+    # Armenian "Բարև" + Armenian "Բარև".
     tok = tokenizer.UnicodeTokenizer()
-    text = "ԲարևԲարև"
+    text = "ԲარևԲარև"
     tokenized = tok.tokenize(text)
     # Should be fragmented into 8 characters
-    self.assertLen(tokenized.tokens, 8)
+    self.assertEqual(len(tokenized.tokens), 8)
     self.assertEqual(tokenized.tokens[0].token_type, tokenizer.TokenType.WORD)
 
   def test_find_sentence_range_empty_input(self):
-    # Ensure robustness against empty input, which previously caused a crash.
+    """Ensure robustness against empty input."""
     interval = tokenizer.find_sentence_range("", [], 0)
     self.assertEqual(interval, tokenizer.TokenInterval(0, 0))
 
   def test_normalization_indices_match_input(self):
     """Test that token indices match the ORIGINAL input, not normalized text."""
-    # "e" + combining acute accent (2 chars) -> NFC "é" (1 char)
     nfd_text = "e\u0301"
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(nfd_text)
 
-    # We want indices to match input, so CharInterval should be [0, 2).
     self.assertEqual(tokenized.text, nfd_text)
-    self.assertLen(tokenized.tokens, 1)
+    self.assertEqual(len(tokenized.tokens), 1)
     self.assertEqual(tokenized.tokens[0].char_interval.start_pos, 0)
     self.assertEqual(tokenized.tokens[0].char_interval.end_pos, 2)
 
@@ -548,8 +558,7 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     tok = tokenizer.RegexTokenizer()
     text = "A/B"
     tokenized = tok.tokenize(text)
-    # Ensure parity with UnicodeTokenizer by splitting acronyms into constituent parts.
-    self.assertLen(tokenized.tokens, 3)
+    self.assertEqual(len(tokenized.tokens), 3)
     self.assertEqual(tokenized.tokens[0].token_type, tokenizer.TokenType.WORD)
     self.assertEqual(
         tokenized.tokens[1].token_type, tokenizer.TokenType.PUNCTUATION
@@ -598,14 +607,12 @@ class UnicodeTokenizerTest(parameterized.TestCase):
     )
 
   def test_distinct_unknown_scripts_do_not_merge(self):
-    """Verify that distinct unknown scripts (e.g. Bengali vs Devanagari) are not merged."""
-    # Bengali "অ" (U+0985) and Devanagari "अ" (U+0905)
+    """Verify that distinct unknown scripts are not merged."""
     text = "অअ"
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(text)
 
-    # Should be 2 tokens because scripts are different
-    self.assertLen(tokenized.tokens, 2)
+    self.assertEqual(len(tokenized.tokens), 2)
     self.assertEqual(tokenized.tokens[0].char_interval.start_pos, 0)
     self.assertEqual(tokenized.tokens[0].char_interval.end_pos, 1)
     self.assertEqual(tokenized.tokens[1].char_interval.start_pos, 1)
@@ -613,20 +620,18 @@ class UnicodeTokenizerTest(parameterized.TestCase):
 
   def test_identical_unknown_scripts_merge(self):
     """Verify that identical unknown scripts merge into a single token."""
-    # Bengali "অ" (U+0985) and Bengali "আ" (U+0986)
     text = "অআ"
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(text)
 
-    # Identical unknown scripts are not merged to avoid expensive lookups.
-    self.assertLen(tokenized.tokens, 2)
+    self.assertEqual(len(tokenized.tokens), 2)
     self.assertEqual(tokenized.tokens[0].char_interval.start_pos, 0)
     self.assertEqual(tokenized.tokens[0].char_interval.end_pos, 1)
     self.assertEqual(tokenized.tokens[1].char_interval.start_pos, 1)
     self.assertEqual(tokenized.tokens[1].char_interval.end_pos, 2)
 
 
-class ExceptionTest(absltest.TestCase):
+class ExceptionTest(unittest.TestCase):
   """Test custom exception types and error conditions."""
 
   def test_invalid_token_interval_errors(self):
@@ -676,108 +681,117 @@ class ExceptionTest(absltest.TestCase):
     ):
       tokenizer.find_sentence_range(text, tokens, 999)
 
-    # Empty input should NOT raise SentenceRangeError (Feedback 10 Robustness)
+    # Empty input should NOT raise SentenceRangeError
     interval = tokenizer.find_sentence_range("", [], 0)
     self.assertEqual(interval, tokenizer.TokenInterval(0, 0))
 
 
-class NegativeTestCases(parameterized.TestCase):
+class NegativeTestCases(unittest.TestCase):
   """Test cases for invalid input and edge cases."""
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="invalid_utf8_sequence",
-          input_text="Invalid \ufffd sequence",
-          expected_tokens=[
-              ("Invalid", tokenizer.TokenType.WORD),
-              (
-                  "\ufffd",
-                  tokenizer.TokenType.PUNCTUATION,
-              ),
-              ("sequence", tokenizer.TokenType.WORD),
-          ],
-      ),
-      dict(
-          testcase_name="extremely_long_grapheme_cluster",
-          input_text="e" + "\u0301" * 10,
-          expected_tokens=[
-              (
-                  "e" + "\u0301" * 10,
-                  tokenizer.TokenType.WORD,
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="mixed_valid_invalid_unicode",
-          input_text="Valid текст \ufffd 中文",
-          expected_tokens=[
-              ("Valid", tokenizer.TokenType.WORD),
-              ("текст", tokenizer.TokenType.WORD),
-              ("\ufffd", tokenizer.TokenType.PUNCTUATION),
-              ("中", tokenizer.TokenType.WORD),
-              ("文", tokenizer.TokenType.WORD),
-          ],
-      ),
-      dict(
-          testcase_name="zero_width_joiners",
-          input_text="Family: 👨‍👩‍👧‍👦",
-          expected_tokens=[
-              ("Family", tokenizer.TokenType.WORD),
-              (":", tokenizer.TokenType.PUNCTUATION),
-              (
-                  "👨‍👩‍👧‍👦",
-                  tokenizer.TokenType.PUNCTUATION,
-              ),
-          ],
-      ),
-      dict(
-          testcase_name="isolated_combining_marks",
-          input_text="\u0301\u0302\u0303 test",
-          expected_tokens=[
-              (
-                  "\u0301\u0302\u0303",
-                  tokenizer.TokenType.PUNCTUATION,
-              ),
-              ("test", tokenizer.TokenType.WORD),
-          ],
-      ),
-  )
-  def test_invalid_and_edge_case_unicode(self, input_text, expected_tokens):
-    """Test handling of invalid Unicode sequences and edge cases."""
+  def test_invalid_utf8_sequence(self):
+    input_text = "Invalid \ufffd sequence"
+    expected_tokens = [
+        ("Invalid", tokenizer.TokenType.WORD),
+        ("\ufffd", tokenizer.TokenType.PUNCTUATION),
+        ("sequence", tokenizer.TokenType.WORD),
+    ]
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize(input_text)
-    self.assertLen(
-        tokenized.tokens,
-        len(expected_tokens),
-        f"Expected {len(expected_tokens)} tokens for edge case '{input_text}',"
-        f" but got {len(tokenized.tokens)}",
-    )
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
 
     for i, (token, (expected_text, expected_type)) in enumerate(
         zip(tokenized.tokens, expected_tokens)
     ):
-      # UPDATE: Tokenizer no longer normalizes to NFC, so we expect original text.
-      # expected_text = unicodedata.normalize("NFC", expected_text)
       actual_text = tokenized.text[
           token.char_interval.start_pos : token.char_interval.end_pos
       ]
-      self.assertEqual(
-          actual_text,
-          expected_text,
-          f"Token {i} text mismatch. Expected '{expected_text}', got"
-          f" '{actual_text}'",
-      )
-      self.assertEqual(
-          token.token_type,
-          expected_type,
-          f"Token {i} type mismatch. Expected {expected_type}, got"
-          f" {token.token_type}",
-      )
+      self.assertEqual(actual_text, expected_text)
+      self.assertEqual(token.token_type, expected_type)
+
+  def test_extremely_long_grapheme_cluster(self):
+    input_text = "e" + "\u0301" * 10
+    expected_tokens = [("e" + "\u0301" * 10, tokenizer.TokenType.WORD)]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
+
+    for i, (token, (expected_text, expected_type)) in enumerate(
+        zip(tokenized.tokens, expected_tokens)
+    ):
+      actual_text = tokenized.text[
+          token.char_interval.start_pos : token.char_interval.end_pos
+      ]
+      self.assertEqual(actual_text, expected_text)
+      self.assertEqual(token.token_type, expected_type)
+
+  def test_mixed_valid_invalid_unicode(self):
+    input_text = "Valid текст \ufffd 中文"
+    expected_tokens = [
+        ("Valid", tokenizer.TokenType.WORD),
+        ("текст", tokenizer.TokenType.WORD),
+        ("\ufffd", tokenizer.TokenType.PUNCTUATION),
+        ("中", tokenizer.TokenType.WORD),
+        ("文", tokenizer.TokenType.WORD),
+    ]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
+
+    for i, (token, (expected_text, expected_type)) in enumerate(
+        zip(tokenized.tokens, expected_tokens)
+    ):
+      actual_text = tokenized.text[
+          token.char_interval.start_pos : token.char_interval.end_pos
+      ]
+      self.assertEqual(actual_text, expected_text)
+      self.assertEqual(token.token_type, expected_type)
+
+  def test_zero_width_joiners(self):
+    input_text = "Family: 👨‍👩‍👧‍👦"
+    expected_tokens = [
+        ("Family", tokenizer.TokenType.WORD),
+        (":", tokenizer.TokenType.PUNCTUATION),
+        ("👨‍👩‍👧‍👦", tokenizer.TokenType.PUNCTUATION),
+    ]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
+
+    for i, (token, (expected_text, expected_type)) in enumerate(
+        zip(tokenized.tokens, expected_tokens)
+    ):
+      actual_text = tokenized.text[
+          token.char_interval.start_pos : token.char_interval.end_pos
+      ]
+      self.assertEqual(actual_text, expected_text)
+      self.assertEqual(token.token_type, expected_type)
+
+  def test_isolated_combining_marks(self):
+    input_text = "\u0301\u0302\u0303 test"
+    expected_tokens = [
+        ("\u0301\u0302\u0303", tokenizer.TokenType.PUNCTUATION),
+        ("test", tokenizer.TokenType.WORD),
+    ]
+    tok = tokenizer.UnicodeTokenizer()
+    tokenized = tok.tokenize(input_text)
+    self.assertEqual(len(tokenized.tokens), len(expected_tokens))
+
+    for i, (token, (expected_text, expected_type)) in enumerate(
+        zip(tokenized.tokens, expected_tokens)
+    ):
+      actual_text = tokenized.text[
+          token.char_interval.start_pos : token.char_interval.end_pos
+      ]
+      self.assertEqual(actual_text, expected_text)
+      self.assertEqual(token.token_type, expected_type)
 
   def test_empty_string_edge_case(self):
     tok = tokenizer.UnicodeTokenizer()
     tokenized = tok.tokenize("")
-    self.assertEmpty(tokenized.tokens, "Empty string should produce no tokens")
+    self.assertEqual(
+        len(tokenized.tokens), 0, "Empty string should produce no tokens"
+    )
     self.assertEqual(
         tokenized.text, "", "Tokenized text should preserve empty string"
     )
@@ -792,152 +806,104 @@ class NegativeTestCases(parameterized.TestCase):
     ]
     for whitespace in test_cases:
       tokenized = tok.tokenize(whitespace)
-      self.assertEmpty(
-          tokenized.tokens,
+      self.assertEqual(
+          len(tokenized.tokens),
+          0,
           f"Whitespace-only string '{repr(whitespace)}' should produce no"
           " tokens",
       )
 
 
-class TokensTextTest(parameterized.TestCase):
+class TokensTextTest(unittest.TestCase):
 
   _SENTENCE_WITH_ONE_LINE = "Patient Jane Doe, ID 67890, received 10mg daily."
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="substring_jane_doe",
-          input_text=_SENTENCE_WITH_ONE_LINE,
-          start_index=1,
-          end_index=3,
-          expected_substring="Jane Doe",
-      ),
-      dict(
-          testcase_name="substring_with_punctuation",
-          input_text=_SENTENCE_WITH_ONE_LINE,
-          start_index=0,
-          end_index=4,
-          expected_substring="Patient Jane Doe,",
-      ),
-      dict(
-          testcase_name="numeric_tokens",
-          input_text=_SENTENCE_WITH_ONE_LINE,
-          start_index=5,
-          end_index=6,
-          expected_substring="67890",
-      ),
-  )
-  def test_valid_intervals(
-      self, input_text, start_index, end_index, expected_substring
-  ):
-    input_tokenized = tokenizer.tokenize(input_text)
-    interval = tokenizer.TokenInterval(
-        start_index=start_index, end_index=end_index
-    )
+  def test_substring_jane_doe(self):
+    input_tokenized = tokenizer.tokenize(self._SENTENCE_WITH_ONE_LINE)
+    interval = tokenizer.TokenInterval(start_index=1, end_index=3)
     result_str = tokenizer.tokens_text(input_tokenized, interval)
-    self.assertEqual(
-        result_str,
-        expected_substring,
-        msg=f"Wrong substring for interval {start_index}..{end_index}",
-    )
+    self.assertEqual(result_str, "Jane Doe")
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="start_index_negative",
-          input_text=_SENTENCE_WITH_ONE_LINE,
-          start_index=-1,
-          end_index=2,
-      ),
-      dict(
-          testcase_name="end_index_out_of_bounds",
-          input_text=_SENTENCE_WITH_ONE_LINE,
-          start_index=0,
-          end_index=999,
-      ),
-      dict(
-          testcase_name="start_index_gt_end_index",
-          input_text=_SENTENCE_WITH_ONE_LINE,
-          start_index=5,
-          end_index=4,
-      ),
-  )
-  def test_invalid_intervals(self, input_text, start_index, end_index):
-    input_tokenized = tokenizer.tokenize(input_text)
-    interval = tokenizer.TokenInterval(
-        start_index=start_index, end_index=end_index
-    )
+  def test_substring_with_punctuation(self):
+    input_tokenized = tokenizer.tokenize(self._SENTENCE_WITH_ONE_LINE)
+    interval = tokenizer.TokenInterval(start_index=0, end_index=4)
+    result_str = tokenizer.tokens_text(input_tokenized, interval)
+    self.assertEqual(result_str, "Patient Jane Doe,")
+
+  def test_numeric_tokens(self):
+    input_tokenized = tokenizer.tokenize(self._SENTENCE_WITH_ONE_LINE)
+    interval = tokenizer.TokenInterval(start_index=5, end_index=6)
+    result_str = tokenizer.tokens_text(input_tokenized, interval)
+    self.assertEqual(result_str, "67890")
+
+  def test_start_index_negative(self):
+    input_tokenized = tokenizer.tokenize(self._SENTENCE_WITH_ONE_LINE)
+    interval = tokenizer.TokenInterval(start_index=-1, end_index=2)
     with self.assertRaises(tokenizer.InvalidTokenIntervalError):
-      _ = tokenizer.tokens_text(input_tokenized, interval)
+      tokenizer.tokens_text(input_tokenized, interval)
+
+  def test_end_index_out_of_bounds(self):
+    input_tokenized = tokenizer.tokenize(self._SENTENCE_WITH_ONE_LINE)
+    interval = tokenizer.TokenInterval(start_index=0, end_index=999)
+    with self.assertRaises(tokenizer.InvalidTokenIntervalError):
+      tokenizer.tokens_text(input_tokenized, interval)
+
+  def test_start_index_gt_end_index(self):
+    input_tokenized = tokenizer.tokenize(self._SENTENCE_WITH_ONE_LINE)
+    interval = tokenizer.TokenInterval(start_index=5, end_index=4)
+    with self.assertRaises(tokenizer.InvalidTokenIntervalError):
+      tokenizer.tokens_text(input_tokenized, interval)
 
 
-class SentenceRangeTest(parameterized.TestCase):
+class SentenceRangeTest(unittest.TestCase):
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="simple_sentence",
-          input_text="This is one sentence. Then another?",
-          start_pos=0,
-          expected_interval=(0, 5),
-      ),
-      dict(
-          testcase_name="abbreviation_not_boundary",
-          input_text="Dr. John visited. Then left.",
-          start_pos=0,
-          expected_interval=(0, 5),
-      ),
-      dict(
-          testcase_name="second_line_capital_letter_terminates_sentence",
-          input_text=textwrap.dedent("""\
-              Blood pressure was 160/90 and patient was recommended to
-              Atenolol 50 mg daily."""),
-          start_pos=0,
-          # "160/90" is now 3 tokens: "160", "/", "90".
-          # Tokens: Blood, pressure, was, 160, /, 90, and, patient, was, recommended, to (11 tokens)
-          expected_interval=(0, 11),
-      ),
-  )
-  def test_partial_sentence_range(
-      self, input_text, start_pos, expected_interval
-  ):
+  def test_simple_sentence(self):
+    input_text = "This is one sentence. Then another?"
     tokenized = tokenizer.tokenize(input_text)
     tokens = tokenized.tokens
-
-    interval = tokenizer.find_sentence_range(input_text, tokens, start_pos)
-    expected_start, expected_end = expected_interval
-    self.assertEqual(interval.start_index, expected_start)
-    self.assertEqual(interval.end_index, expected_end)
-
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="end_of_text",
-          input_text="Only one sentence here",
-          start_pos=0,
-      ),
-  )
-  def test_full_sentence_range(self, input_text, start_pos):
-    tokenized = tokenizer.tokenize(input_text)
-    tokens = tokenized.tokens
-
-    interval = tokenizer.find_sentence_range(input_text, tokens, start_pos)
+    interval = tokenizer.find_sentence_range(input_text, tokens, 0)
     self.assertEqual(interval.start_index, 0)
-    self.assertLen(tokens, interval.end_index)
+    self.assertEqual(interval.end_index, 5)
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="out_of_range_negative_start",
-          input_text="Hello world.",
-          start_pos=-1,
-      ),
-      dict(
-          testcase_name="out_of_range_exceeding_length",
-          input_text="Hello world.",
-          start_pos=999,
-      ),
-  )
-  def test_invalid_start_pos(self, input_text, start_pos):
+  def test_abbreviation_not_boundary(self):
+    input_text = "Dr. John visited. Then left."
+    tokenized = tokenizer.tokenize(input_text)
+    tokens = tokenized.tokens
+    interval = tokenizer.find_sentence_range(input_text, tokens, 0)
+    self.assertEqual(interval.start_index, 0)
+    self.assertEqual(interval.end_index, 5)
+
+  def test_second_line_capital_letter_terminates_sentence(self):
+    input_text = textwrap.dedent("""\
+            Blood pressure was 160/90 and patient was recommended to
+            Atenolol 50 mg daily.""")
+    tokenized = tokenizer.tokenize(input_text)
+    tokens = tokenized.tokens
+    interval = tokenizer.find_sentence_range(input_text, tokens, 0)
+    self.assertEqual(interval.start_index, 0)
+    self.assertEqual(interval.end_index, 11)
+
+  def test_full_sentence_range_end_of_text(self):
+    input_text = "Only one sentence here"
+    tokenized = tokenizer.tokenize(input_text)
+    tokens = tokenized.tokens
+    interval = tokenizer.find_sentence_range(input_text, tokens, 0)
+    self.assertEqual(interval.start_index, 0)
+    self.assertEqual(len(tokens), interval.end_index)
+
+  def test_out_of_range_negative_start(self):
+    input_text = "Hello world."
     tokenized = tokenizer.tokenize(input_text)
     tokens = tokenized.tokens
     with self.assertRaises(tokenizer.SentenceRangeError):
-      tokenizer.find_sentence_range(input_text, tokens, start_pos)
+      tokenizer.find_sentence_range(input_text, tokens, -1)
+
+  def test_out_of_range_exceeding_length(self):
+    input_text = "Hello world."
+    tokenized = tokenizer.tokenize(input_text)
+    tokens = tokenized.tokens
+    with self.assertRaises(tokenizer.SentenceRangeError):
+      tokenizer.find_sentence_range(input_text, tokens, 999)
 
   def test_sentence_boundary_with_quote(self):
     """Test that sentence boundary detection works with trailing quotes."""
@@ -972,26 +938,20 @@ class SentenceRangeTest(parameterized.TestCase):
     text_jp = "こんにちは。世界。"
     tokens = tokenizer.UnicodeTokenizer().tokenize(text_jp).tokens
     interval = tokenizer.find_sentence_range(text_jp, tokens, 0)
-    # "こんにちは" (5 tokens due to CJK fragmentation) + "。" (1 token) = 6 tokens
     self.assertEqual(interval.end_index, 6)
 
     # Hindi Danda
     text_hi = "नमस्ते। दुनिया।"
     tokens = tokenizer.UnicodeTokenizer().tokenize(text_hi).tokens
     interval = tokenizer.find_sentence_range(text_hi, tokens, 0)
-    # "नमस्ते" (1 token, Devanagari is grouped) + "।" (1 token) = 2 tokens
     self.assertEqual(interval.end_index, 2)
 
   def test_configurable_sentence_splitting(self):
     """Verify that custom abbreviations prevent sentence splitting."""
-    # Test with custom abbreviations (e.g. German "z.B.")
-    text = "Das ist z.B. ein Test."
     tok = tokenizer.RegexTokenizer()
-    _ = tok.tokenize(text)
 
     text_french = "M. Smith est ici."
     tokenized_french = tok.tokenize(text_french)
-    # "M." is not in default _KNOWN_ABBREVIATIONS ("Mr.", "Mrs.", etc.)
 
     # Default: "M." ends sentence.
     sentence1 = tokenizer.find_sentence_range(
@@ -1013,4 +973,4 @@ class SentenceRangeTest(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

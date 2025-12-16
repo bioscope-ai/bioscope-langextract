@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Provider-specific schema implementations."""
+"""Provider-specific schema implementations.
+
+Note: Built-in provider schemas have been removed from this fork for serverless
+deployment.
+"""
 from __future__ import annotations
 
-from langextract.providers.schemas import gemini
-
-GeminiSchema = gemini.GeminiSchema  # Backward compat
-
-__all__ = ["GeminiSchema"]
+__all__: list[str] = []

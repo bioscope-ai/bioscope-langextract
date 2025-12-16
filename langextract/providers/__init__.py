@@ -21,19 +21,17 @@ management in build systems.
 
 import importlib
 from importlib import metadata
+import logging
 import os
 
-from absl import logging
-
 from langextract.providers import builtin_registry
+
+_logger = logging.getLogger(__name__)
 from langextract.providers import router
 
 registry = router  # Backward compat alias
 
 __all__ = [
-    "gemini",
-    "openai",
-    "ollama",
     "router",
     "registry",  # Backward compat
     "schemas",
@@ -86,7 +84,7 @@ def load_plugins_once() -> None:
       "true",
       "yes",
   ):
-    logging.info("Plugin loading disabled via LANGEXTRACT_DISABLE_PLUGINS")
+    _logger.info("Plugin loading disabled via LANGEXTRACT_DISABLE_PLUGINS")
     _plugins_loaded = True
     return
 
@@ -115,7 +113,7 @@ def load_plugins_once() -> None:
       try:
 
         provider_class = entry_point.load()
-        logging.info("Loaded provider plugin: %s", entry_point.name)
+        _logger.info("Loaded provider plugin: %s", entry_point.name)
 
         if hasattr(provider_class, "get_model_patterns"):
           patterns = provider_class.get_model_patterns()
@@ -128,16 +126,16 @@ def load_plugins_once() -> None:
                     20,  # Default plugin priority
                 ),
             )(provider_class)
-          logging.info(
+          _logger.info(
               "Registered %d patterns for %s", len(patterns), entry_point.name
           )
       except Exception as e:
-        logging.warning(
+        _logger.warning(
             "Failed to load provider plugin %s: %s", entry_point.name, e
         )
 
   except Exception as e:
-    logging.warning("Error discovering provider plugins: %s", e)
+    _logger.warning("Error discovering provider plugins: %s", e)
 
   _plugins_loaded = True
 

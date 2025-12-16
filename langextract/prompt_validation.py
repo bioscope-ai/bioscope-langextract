@@ -20,10 +20,11 @@ from collections.abc import Sequence
 import copy
 import dataclasses
 import enum
-
-from absl import logging
+import logging
 
 from langextract import resolver
+
+_logger = logging.getLogger(__name__)
 from langextract.core import data
 from langextract.core import tokenizer as tokenizer_lib
 
@@ -230,11 +231,11 @@ def handle_alignment_report(
 
   for issue in report.issues:
     if issue.issue_kind is _IssueKind.NON_EXACT:
-      logging.warning(
+      _logger.warning(
           "Prompt alignment: non-exact match: %s", issue.short_msg()
       )
     else:
-      logging.warning(
+      _logger.warning(
           "Prompt alignment: FAILED to align: %s", issue.short_msg()
       )
 

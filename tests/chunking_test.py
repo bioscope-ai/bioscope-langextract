@@ -13,17 +13,15 @@
 # limitations under the License.
 
 import textwrap
+import unittest
 from unittest import mock
-
-from absl.testing import absltest
-from absl.testing import parameterized
 
 from langextract import chunking
 from langextract.core import data
 from langextract.core import tokenizer
 
 
-class SentenceIterTest(absltest.TestCase):
+class SentenceIterTest(unittest.TestCase):
 
   def test_basic(self):
     text = "This is a sentence. This is a longer sentence. Mr. Bond\nasks\nwhy?"
@@ -64,7 +62,7 @@ class SentenceIterTest(absltest.TestCase):
       next(sentence_iter)
 
 
-class ChunkIteratorTest(absltest.TestCase):
+class ChunkIteratorTest(unittest.TestCase):
 
   def test_multi_sentence_chunk(self):
     text = "This is a sentence. This is a longer sentence. Mr. Bond\nasks\nwhy?"
@@ -205,12 +203,7 @@ class ChunkIteratorTest(absltest.TestCase):
       next(chunk_iter)
 
   def test_newline_at_chunk_boundary_does_not_create_empty_interval(self):
-    """Test that newlines at chunk boundaries don't create empty token intervals.
-
-    When a newline occurs exactly at a chunk boundary, the chunking algorithm
-    should not attempt to create an empty interval (where start_index == end_index).
-    This was causing a ValueError in create_token_interval().
-    """
+    """Test that newlines at chunk boundaries don't create empty token intervals."""
     text = "First sentence.\nSecond sentence that is longer.\nThird sentence."
     tokenized_text = tokenizer.tokenize(text)
 
@@ -237,10 +230,10 @@ class ChunkIteratorTest(absltest.TestCase):
 
   def test_chunk_unicode_text(self):
     text = textwrap.dedent("""\
-    Chief Complaint:
-    ‘swelling of tongue and difficulty breathing and swallowing’
-    History of Present Illness:
-    77 y o woman in NAD with a h/o CAD, DM2, asthma and HTN on altace.""")
+        Chief Complaint:
+        'swelling of tongue and difficulty breathing and swallowing'
+        History of Present Illness:
+        77 y o woman in NAD with a h/o CAD, DM2, asthma and HTN on altace.""")
     tokenized_text = tokenizer.tokenize(text)
     chunk_iter = chunking.ChunkIterator(
         tokenized_text,
@@ -260,14 +253,14 @@ class ChunkIteratorTest(absltest.TestCase):
 
   def test_newlines_is_secondary_sentence_break(self):
     text = textwrap.dedent("""\
-    Medications:
-    Theophyline (Uniphyl) 600 mg qhs – bronchodilator by increasing cAMP used
-    for treating asthma
-    Diltiazem 300 mg qhs – Ca channel blocker used to control hypertension
-    Simvistatin (Zocor) 20 mg qhs- HMGCo Reductase inhibitor for
-    hypercholesterolemia
-    Ramipril (Altace) 10 mg BID – ACEI for hypertension and diabetes for
-    renal protective effect""")
+        Medications:
+        Theophyline (Uniphyl) 600 mg qhs – bronchodilator by increasing cAMP used
+        for treating asthma
+        Diltiazem 300 mg qhs – Ca channel blocker used to control hypertension
+        Simvistatin (Zocor) 20 mg qhs- HMGCo Reductase inhibitor for
+        hypercholesterolemia
+        Ramipril (Altace) 10 mg BID – ACEI for hypertension and diabetes for
+        renal protective effect""")
     tokenized_text = tokenizer.tokenize(text)
     chunk_iter = chunking.ChunkIterator(
         tokenized_text,
@@ -276,11 +269,13 @@ class ChunkIteratorTest(absltest.TestCase):
     )
 
     first_chunk = next(chunk_iter)
-    expected_first_chunk_text = textwrap.dedent("""\
-    Medications:
-    Theophyline (Uniphyl) 600 mg qhs – bronchodilator by increasing cAMP used
-    for treating asthma
-    Diltiazem 300 mg qhs – Ca channel blocker used to control hypertension""")
+    expected_first_chunk_text = textwrap.dedent(
+        """\
+        Medications:
+        Theophyline (Uniphyl) 600 mg qhs – bronchodilator by increasing cAMP used
+        for treating asthma
+        Diltiazem 300 mg qhs – Ca channel blocker used to control hypertension"""
+    )
     self.assertEqual(
         chunking.get_token_interval_text(
             tokenized_text, first_chunk.token_interval
@@ -295,10 +290,10 @@ class ChunkIteratorTest(absltest.TestCase):
 
     second_chunk = next(chunk_iter)
     expected_second_chunk_text = textwrap.dedent("""\
-    Simvistatin (Zocor) 20 mg qhs- HMGCo Reductase inhibitor for
-    hypercholesterolemia
-    Ramipril (Altace) 10 mg BID – ACEI for hypertension and diabetes for
-    renal protective effect""")
+        Simvistatin (Zocor) 20 mg qhs- HMGCo Reductase inhibitor for
+        hypercholesterolemia
+        Ramipril (Altace) 10 mg BID – ACEI for hypertension and diabetes for
+        renal protective effect""")
     self.assertEqual(
         chunking.get_token_interval_text(
             tokenized_text, second_chunk.token_interval
@@ -342,93 +337,67 @@ class ChunkIteratorTest(absltest.TestCase):
     self.assertEqual(text_chunk.chunk_text, text)
 
 
-class BatchingTest(parameterized.TestCase):
+class BatchingTest(unittest.TestCase):
 
-  _SAMPLE_DOCUMENT = data.Document(
-      text=(
-          "Sample text with numerical values such as 120/80 mmHg, 98.6°F, and"
-          " 50mg."
-      ),
-  )
+  def _get_sample_document(self):
+    return data.Document(
+        text=(
+            "Sample text with numerical values such as 120/80 mmHg, 98.6°F, and"
+            " 50mg."
+        ),
+    )
 
-  @parameterized.named_parameters(
-      (
-          "test_with_data",
-          _SAMPLE_DOCUMENT.tokenized_text,
-          15,
-          10,
-          [[
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=0, end_index=1
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=1, end_index=3
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=3, end_index=4
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=4, end_index=5
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=5, end_index=7
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=7, end_index=10
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=10, end_index=14
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=14, end_index=19
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-              chunking.TextChunk(
-                  token_interval=tokenizer.TokenInterval(
-                      start_index=19, end_index=22
-                  ),
-                  document=_SAMPLE_DOCUMENT,
-              ),
-          ]],
-      ),
-      (
-          "test_empty_input",
-          "",
-          15,
-          10,
-          [],
-      ),
-  )
-  def test_make_batches_of_textchunk(
-      self,
-      tokenized_text: tokenizer.TokenizedText,
-      batch_length: int,
-      max_char_buffer: int,
-      expected_batches: list[list[chunking.TextChunk]],
-  ):
+  def test_make_batches_with_data(self):
+    sample_doc = self._get_sample_document()
+    tokenized_text = sample_doc.tokenized_text
+    batch_length = 15
+    max_char_buffer = 10
+
+    expected_batches = [[
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(start_index=0, end_index=1),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(start_index=1, end_index=3),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(start_index=3, end_index=4),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(start_index=4, end_index=5),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(start_index=5, end_index=7),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(start_index=7, end_index=10),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(
+                start_index=10, end_index=14
+            ),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(
+                start_index=14, end_index=19
+            ),
+            document=sample_doc,
+        ),
+        chunking.TextChunk(
+            token_interval=tokenizer.TokenInterval(
+                start_index=19, end_index=22
+            ),
+            document=sample_doc,
+        ),
+    ]]
+
     chunk_iter = chunking.ChunkIterator(
         tokenized_text,
         max_char_buffer,
@@ -437,23 +406,38 @@ class BatchingTest(parameterized.TestCase):
     batches_iter = chunking.make_batches_of_textchunk(chunk_iter, batch_length)
     actual_batches = [list(batch) for batch in batches_iter]
 
-    self.assertListEqual(
+    self.assertEqual(
         actual_batches,
         expected_batches,
         "Batched chunks should match expected structure",
     )
 
+  def test_make_batches_empty_input(self):
+    tokenized_text = ""
+    batch_length = 15
+    max_char_buffer = 10
 
-class TextChunkTest(absltest.TestCase):
+    chunk_iter = chunking.ChunkIterator(
+        tokenized_text,
+        max_char_buffer,
+        tokenizer_impl=tokenizer.RegexTokenizer(),
+    )
+    batches_iter = chunking.make_batches_of_textchunk(chunk_iter, batch_length)
+    actual_batches = [list(batch) for batch in batches_iter]
+
+    self.assertEqual(actual_batches, [])
+
+
+class TextChunkTest(unittest.TestCase):
 
   def test_string_output(self):
     text = "Example input text."
     expected = textwrap.dedent("""\
-    TextChunk(
-      interval=[start_index: 0, end_index: 1],
-      Document ID: test_doc_123,
-      Chunk Text: 'Example'
-    )""")
+        TextChunk(
+          interval=[start_index: 0, end_index: 1],
+          Document ID: test_doc_123,
+          Chunk Text: 'Example'
+        )""")
     document = data.Document(text=text, document_id="test_doc_123")
     tokenized_text = tokenizer.tokenize(text)
     chunk_iter = chunking.ChunkIterator(
@@ -466,7 +450,7 @@ class TextChunkTest(absltest.TestCase):
     self.assertEqual(str(text_chunk), expected)
 
 
-class TextAdditionalContextTest(absltest.TestCase):
+class TextAdditionalContextTest(unittest.TestCase):
 
   _ADDITIONAL_CONTEXT = "Some additional context for prompt..."
 
@@ -511,55 +495,47 @@ class TextAdditionalContextTest(absltest.TestCase):
     )
     additional_contexts = [chunk.additional_context for chunk in chunks]
     expected_additional_contexts = [self._ADDITIONAL_CONTEXT] * len(chunks)
-    self.assertListEqual(additional_contexts, expected_additional_contexts)
+    self.assertEqual(additional_contexts, expected_additional_contexts)
 
 
-class TextChunkPropertyTest(parameterized.TestCase):
+class TextChunkPropertyTest(unittest.TestCase):
 
-  @parameterized.named_parameters(
-      {
-          "testcase_name": "with_document",
-          "document": data.Document(
-              text="Sample text.",
-              document_id="doc123",
-              additional_context="Additional info",
-          ),
-          "expected_id": "doc123",
-          "expected_text": "Sample text.",
-          "expected_context": "Additional info",
-      },
-      {
-          "testcase_name": "no_document",
-          "document": None,
-          "expected_id": None,
-          "expected_text": None,
-          "expected_context": None,
-      },
-      {
-          "testcase_name": "no_additional_context",
-          "document": data.Document(
-              text="Sample text.",
-              document_id="doc123",
-          ),
-          "expected_id": "doc123",
-          "expected_text": "Sample text.",
-          "expected_context": None,
-      },
-  )
-  def test_text_chunk_properties(
-      self, document, expected_id, expected_text, expected_context
-  ):
+  def test_with_document(self):
+    document = data.Document(
+        text="Sample text.",
+        document_id="doc123",
+        additional_context="Additional info",
+    )
     chunk = chunking.TextChunk(
         token_interval=tokenizer.TokenInterval(start_index=0, end_index=1),
         document=document,
     )
-    self.assertEqual(chunk.document_id, expected_id)
-    if chunk.document_text:
-      self.assertEqual(chunk.document_text.text, expected_text)
-    else:
-      self.assertIsNone(chunk.document_text)
-    self.assertEqual(chunk.additional_context, expected_context)
+    self.assertEqual(chunk.document_id, "doc123")
+    self.assertEqual(chunk.document_text.text, "Sample text.")
+    self.assertEqual(chunk.additional_context, "Additional info")
+
+  def test_no_document(self):
+    chunk = chunking.TextChunk(
+        token_interval=tokenizer.TokenInterval(start_index=0, end_index=1),
+        document=None,
+    )
+    self.assertIsNone(chunk.document_id)
+    self.assertIsNone(chunk.document_text)
+    self.assertIsNone(chunk.additional_context)
+
+  def test_no_additional_context(self):
+    document = data.Document(
+        text="Sample text.",
+        document_id="doc123",
+    )
+    chunk = chunking.TextChunk(
+        token_interval=tokenizer.TokenInterval(start_index=0, end_index=1),
+        document=document,
+    )
+    self.assertEqual(chunk.document_id, "doc123")
+    self.assertEqual(chunk.document_text.text, "Sample text.")
+    self.assertIsNone(chunk.additional_context)
 
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

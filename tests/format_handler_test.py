@@ -15,9 +15,7 @@
 """Tests for centralized format handler."""
 
 import textwrap
-
-from absl.testing import absltest
-from absl.testing import parameterized
+import unittest
 
 from langextract import prompting
 from langextract import resolver
@@ -25,75 +23,10 @@ from langextract.core import data
 from langextract.core import format_handler
 
 
-class FormatHandlerTest(parameterized.TestCase):
+class FormatHandlerTest(unittest.TestCase):
   """Tests for FormatHandler."""
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="json_with_wrapper_and_fences",
-          format_type=data.FormatType.JSON,
-          use_wrapper=True,
-          wrapper_key="extractions",
-          use_fences=True,
-          extraction_class="person",
-          extraction_text="Alice",
-          attributes={"role": "engineer"},
-          expected_fence="```json",
-          expected_wrapper='"extractions":',
-          expected_extraction='"person": "Alice"',
-          model_output=textwrap.dedent("""
-              Here is the result:
-              ```json
-              {
-                "extractions": [
-                  {"person": "Bob", "person_attributes": {"role": "manager"}}
-                ]
-              }
-              ```
-          """).strip(),
-          parsed_class="person",
-          parsed_text="Bob",
-      ),
-      dict(
-          testcase_name="json_no_wrapper_no_fences",
-          format_type=data.FormatType.JSON,
-          use_wrapper=False,
-          wrapper_key=None,
-          use_fences=False,
-          extraction_class="item",
-          extraction_text="book",
-          attributes=None,
-          expected_fence=None,
-          expected_wrapper=None,
-          expected_extraction='"item": "book"',
-          model_output='[{"item": "pen", "item_attributes": {}}]',
-          parsed_class="item",
-          parsed_text="pen",
-      ),
-      dict(
-          testcase_name="yaml_with_wrapper_and_fences",
-          format_type=data.FormatType.YAML,
-          use_wrapper=True,
-          wrapper_key="extractions",
-          use_fences=True,
-          extraction_class="city",
-          extraction_text="Paris",
-          attributes=None,
-          expected_fence="```yaml",
-          expected_wrapper="extractions:",
-          expected_extraction="city: Paris",
-          model_output=textwrap.dedent("""
-              ```yaml
-              extractions:
-                - city: London
-                  city_attributes: {}
-              ```
-          """).strip(),
-          parsed_class="city",
-          parsed_text="London",
-      ),
-  )
-  def test_format_and_parse(  # pylint: disable=too-many-arguments
+  def _test_format_and_parse(
       self,
       format_type,
       use_wrapper,
@@ -141,8 +74,77 @@ class FormatHandlerTest(parameterized.TestCase):
     self.assertIn(expected_extraction, formatted)
 
     parsed = handler.parse_output(model_output)
-    self.assertLen(parsed, 1)
+    self.assertEqual(len(parsed), 1)
     self.assertEqual(parsed[0][parsed_class], parsed_text)
+
+  def test_format_and_parse_json_with_wrapper_and_fences(self):
+    """Test JSON format with wrapper and fences."""
+    self._test_format_and_parse(
+        format_type=data.FormatType.JSON,
+        use_wrapper=True,
+        wrapper_key="extractions",
+        use_fences=True,
+        extraction_class="person",
+        extraction_text="Alice",
+        attributes={"role": "engineer"},
+        expected_fence="```json",
+        expected_wrapper='"extractions":',
+        expected_extraction='"person": "Alice"',
+        model_output=textwrap.dedent("""
+                Here is the result:
+                ```json
+                {
+                  "extractions": [
+                    {"person": "Bob", "person_attributes": {"role": "manager"}}
+                  ]
+                }
+                ```
+            """).strip(),
+        parsed_class="person",
+        parsed_text="Bob",
+    )
+
+  def test_format_and_parse_json_no_wrapper_no_fences(self):
+    """Test JSON format without wrapper or fences."""
+    self._test_format_and_parse(
+        format_type=data.FormatType.JSON,
+        use_wrapper=False,
+        wrapper_key=None,
+        use_fences=False,
+        extraction_class="item",
+        extraction_text="book",
+        attributes=None,
+        expected_fence=None,
+        expected_wrapper=None,
+        expected_extraction='"item": "book"',
+        model_output='[{"item": "pen", "item_attributes": {}}]',
+        parsed_class="item",
+        parsed_text="pen",
+    )
+
+  def test_format_and_parse_yaml_with_wrapper_and_fences(self):
+    """Test YAML format with wrapper and fences."""
+    self._test_format_and_parse(
+        format_type=data.FormatType.YAML,
+        use_wrapper=True,
+        wrapper_key="extractions",
+        use_fences=True,
+        extraction_class="city",
+        extraction_text="Paris",
+        attributes=None,
+        expected_fence="```yaml",
+        expected_wrapper="extractions:",
+        expected_extraction="city: Paris",
+        model_output=textwrap.dedent("""
+                ```yaml
+                extractions:
+                  - city: London
+                    city_attributes: {}
+                ```
+            """).strip(),
+        parsed_class="city",
+        parsed_text="London",
+    )
 
   def test_end_to_end_integration_with_prompt_and_resolver(self):
     """Test that FormatHandler unifies prompt generation and parsing."""
@@ -184,20 +186,20 @@ class FormatHandlerTest(parameterized.TestCase):
     )
 
     model_output = textwrap.dedent("""
-        ```json
-        {
-          "extractions": [
+            ```json
             {
-              "person": "Bob",
-              "person_attributes": {"role": "manager"}
+              "extractions": [
+                {
+                  "person": "Bob",
+                  "person_attributes": {"role": "manager"}
+                }
+              ]
             }
-          ]
-        }
-        ```
-    """).strip()
+            ```
+        """).strip()
 
     extractions = test_resolver.resolve(model_output)
-    self.assertLen(extractions, 1, "Should extract exactly one entity")
+    self.assertEqual(len(extractions), 1, "Should extract exactly one entity")
     self.assertEqual(
         extractions[0].extraction_class,
         "person",
@@ -207,29 +209,7 @@ class FormatHandlerTest(parameterized.TestCase):
         extractions[0].extraction_text, "Bob", "Extraction text should be 'Bob'"
     )
 
-  @parameterized.named_parameters(
-      dict(
-          testcase_name="yaml_no_wrapper_no_fences",
-          format_type=data.FormatType.YAML,
-          use_wrapper=False,
-          use_fences=False,
-      ),
-      dict(
-          testcase_name="json_with_wrapper_and_fences",
-          format_type=data.FormatType.JSON,
-          use_wrapper=True,
-          wrapper_key="extractions",
-          use_fences=True,
-      ),
-      dict(
-          testcase_name="yaml_with_wrapper_no_fences",
-          format_type=data.FormatType.YAML,
-          use_wrapper=True,
-          wrapper_key="extractions",
-          use_fences=False,
-      ),
-  )
-  def test_format_parse_roundtrip(
+  def _test_format_parse_roundtrip(
       self, format_type, use_wrapper, use_fences, wrapper_key=None
   ):
     """Test that what we format can be parsed back identically."""
@@ -253,6 +233,32 @@ class FormatHandlerTest(parameterized.TestCase):
     self.assertEqual(parsed[0]["test"], "value")
     self.assertEqual(parsed[0]["test_attributes"]["key"], "data")
 
+  def test_format_parse_roundtrip_yaml_no_wrapper_no_fences(self):
+    """Test YAML roundtrip without wrapper or fences."""
+    self._test_format_parse_roundtrip(
+        format_type=data.FormatType.YAML,
+        use_wrapper=False,
+        use_fences=False,
+    )
+
+  def test_format_parse_roundtrip_json_with_wrapper_and_fences(self):
+    """Test JSON roundtrip with wrapper and fences."""
+    self._test_format_parse_roundtrip(
+        format_type=data.FormatType.JSON,
+        use_wrapper=True,
+        use_fences=True,
+        wrapper_key="extractions",
+    )
+
+  def test_format_parse_roundtrip_yaml_with_wrapper_no_fences(self):
+    """Test YAML roundtrip with wrapper but no fences."""
+    self._test_format_parse_roundtrip(
+        format_type=data.FormatType.YAML,
+        use_wrapper=True,
+        use_fences=False,
+        wrapper_key="extractions",
+    )
+
 
 if __name__ == "__main__":
-  absltest.main()
+  unittest.main()

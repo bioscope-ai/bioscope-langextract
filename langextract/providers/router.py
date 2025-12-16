@@ -24,12 +24,13 @@ from __future__ import annotations
 import dataclasses
 import functools
 import importlib
+import logging
 import re
 import typing
 
-from absl import logging
-
 from langextract.core import base_model
+
+_logger = logging.getLogger(__name__)
 from langextract.core import exceptions
 
 TLanguageModel = typing.TypeVar(
@@ -62,7 +63,7 @@ def _add_entry(
   """Add an entry to the registry with deduplication."""
   key = (provider_id, tuple(p.pattern for p in patterns), priority)
   if key in _entry_keys:
-    logging.debug(
+    _logger.debug(
         "Skipping duplicate registration for %s with patterns %s at"
         " priority %d",
         provider_id,
@@ -72,7 +73,7 @@ def _add_entry(
     return
   _entry_keys.add(key)
   _entries.append(_Entry(patterns=patterns, loader=loader, priority=priority))
-  logging.debug(
+  _logger.debug(
       "Registered provider %s with patterns %s at priority %d",
       provider_id,
       [p.pattern for p in patterns],

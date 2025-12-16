@@ -27,14 +27,14 @@ from __future__ import annotations
 
 import collections
 from collections.abc import Iterable, Iterator
+import logging
 import time
 from typing import DefaultDict
 
-from absl import logging
-
 from langextract import chunking
-from langextract import progress
 from langextract import prompting
+
+_logger = logging.getLogger(__name__)
 from langextract import resolver as resolver_lib
 from langextract.core import base_model
 from langextract.core import data
@@ -202,7 +202,7 @@ class Annotator:
         format_handler=format_handler,
     )
 
-    logging.debug(
+    _logger.debug(
         "Annotator initialized with format_handler: %s", format_handler
     )
 
@@ -338,90 +338,58 @@ class Annotator:
     )
     batches = chunking.make_batches_of_textchunk(chunk_iter, batch_length)
 
-    model_info = progress.get_model_info(self._language_model)
-    batch_iter = progress.create_extraction_progress_bar(
-        batches, model_info=model_info, disable=not show_progress
-    )
+    for batch in batches:
+      if not batch:
+        continue
 
-    chars_processed = 0
-
-    try:
-      for batch in batch_iter:
-        if not batch:
-          continue
-
-        prompts = [
-            self._prompt_generator.render(
-                question=text_chunk.chunk_text,
-                additional_context=text_chunk.additional_context,
-            )
-            for text_chunk in batch
-        ]
-
-        if show_progress:
-          current_chars = sum(
-              len(text_chunk.chunk_text) for text_chunk in batch
+      prompts = [
+          self._prompt_generator.render(
+              question=text_chunk.chunk_text,
+              additional_context=text_chunk.additional_context,
           )
-          try:
-            batch_iter.set_description(
-                progress.format_extraction_progress(
-                    model_info,
-                    current_chars=current_chars,
-                    processed_chars=chars_processed,
-                )
-            )
-          except AttributeError:
-            pass
+          for text_chunk in batch
+      ]
 
-        outputs = self._language_model.infer(batch_prompts=prompts, **kwargs)
-        if not isinstance(outputs, list):
-          outputs = list(outputs)
+      outputs = self._language_model.infer(batch_prompts=prompts, **kwargs)
+      if not isinstance(outputs, list):
+        outputs = list(outputs)
 
-        for text_chunk, scored_outputs in zip(batch, outputs):
-          if not isinstance(scored_outputs, list):
-            scored_outputs = list(scored_outputs)
-          if not scored_outputs:
-            raise exceptions.InferenceOutputError(
-                "No scored outputs from language model."
-            )
-
-          resolved_extractions = resolver.resolve(
-              scored_outputs[0].output, debug=debug, **kwargs
+      for text_chunk, scored_outputs in zip(batch, outputs):
+        if not isinstance(scored_outputs, list):
+          scored_outputs = list(scored_outputs)
+        if not scored_outputs:
+          raise exceptions.InferenceOutputError(
+              "No scored outputs from language model."
           )
 
-          token_offset = (
-              text_chunk.token_interval.start_index
-              if text_chunk.token_interval
-              else 0
-          )
-          char_offset = (
-              text_chunk.char_interval.start_pos
-              if text_chunk.char_interval
-              else 0
-          )
+        resolved_extractions = resolver.resolve(
+            scored_outputs[0].output, debug=debug, **kwargs
+        )
 
-          aligned_extractions = resolver.align(
-              resolved_extractions,
-              text_chunk.chunk_text,
-              token_offset,
-              char_offset,
-              tokenizer_inst=tokenizer,
-              **kwargs,
-          )
+        token_offset = (
+            text_chunk.token_interval.start_index
+            if text_chunk.token_interval
+            else 0
+        )
+        char_offset = (
+            text_chunk.char_interval.start_pos
+            if text_chunk.char_interval
+            else 0
+        )
 
-          for extraction in aligned_extractions:
-            per_doc[text_chunk.document_id].append(extraction)
+        aligned_extractions = resolver.align(
+            resolved_extractions,
+            text_chunk.chunk_text,
+            token_offset,
+            char_offset,
+            tokenizer_inst=tokenizer,
+            **kwargs,
+        )
 
-          if show_progress and text_chunk.char_interval is not None:
-            chars_processed += (
-                text_chunk.char_interval.end_pos
-                - text_chunk.char_interval.start_pos
-            )
+        for extraction in aligned_extractions:
+          per_doc[text_chunk.document_id].append(extraction)
 
-        yield from _emit_docs_iter(keep_last_doc=True)
-
-    finally:
-      batch_iter.close()
+      yield from _emit_docs_iter(keep_last_doc=True)
 
     yield from _emit_docs_iter(keep_last_doc=False)
 
@@ -439,7 +407,7 @@ class Annotator:
   ) -> Iterator[data.AnnotatedDocument]:
     """Sequential extraction passes logic for improved recall."""
 
-    logging.info(
+    _logger.info(
         "Starting sequential extraction passes for improved recall with %d"
         " passes.",
         extraction_passes,
@@ -455,7 +423,7 @@ class Annotator:
       document_texts[_doc.document_id] = _doc.text or ""
 
     for pass_num in range(extraction_passes):
-      logging.info(
+      _logger.info(
           "Starting extraction pass %d of %d", pass_num + 1, extraction_passes
       )
 
@@ -491,7 +459,7 @@ class Annotator:
         total_extractions = sum(
             len(extractions) for extractions in all_pass_extractions
         )
-        logging.info(
+        _logger.info(
             "Document %s: Merged %d extractions from %d passes into "
             "%d non-overlapping extractions.",
             doc_id,
@@ -506,7 +474,7 @@ class Annotator:
           text=document_texts.get(doc_id, doc.text or ""),
       )
 
-    logging.info("Sequential extraction passes completed.")
+    _logger.info("Sequential extraction passes completed.")
 
   def annotate_text(
       self,
@@ -580,16 +548,11 @@ class Annotator:
       unique_classes = len(
           set(e.extraction_class for e in annotations[0].extractions)
       )
-      num_chunks = len(text) // max_char_buffer + (
-          1 if len(text) % max_char_buffer else 0
-      )
-
-      progress.print_extraction_summary(
+      _logger.info(
+          "Extraction complete: %d extractions, %d unique classes, %.2fs",
           num_extractions,
           unique_classes,
-          elapsed_time=elapsed_time,
-          chars_processed=len(text),
-          num_chunks=num_chunks,
+          elapsed_time or 0,
       )
 
     return data.AnnotatedDocument(
